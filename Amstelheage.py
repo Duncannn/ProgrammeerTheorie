@@ -78,7 +78,7 @@ def Visualisation():
 	"""
 	master = Tk()
 	master.title("Amstelheage")
-	# So 10 meters is 40 pixels, otherwise the squared are tiny.
+	# Scaling in the GUI: 10 meters is 40 pixels, otherwise the squares are tiny.
 	scaling = 40
 
 	# Create the GUI
@@ -92,7 +92,7 @@ def Visualisation():
 			w.pack()
 
 	# Label for explanation
-	lbl = Label(text="Green is unfilled land \n Blue is a detached hous \n Red is a bungalow \n Yellow is a maison")
+	lbl = Label(text="Green is unfilled land \n Blue is a detached house \n Red is a bungalow \n Yellow is a maison")
 	lbl.place(x=550, y=40)
 
 	# maximum width and height
