@@ -3,6 +3,8 @@
 
 from Tkinter import *
 
+# useless comment
+
 class Land(object):
 	"""
 	A rectangular field containing empty or filled areas
