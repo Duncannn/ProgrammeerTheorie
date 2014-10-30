@@ -10,28 +10,48 @@ class Land(object):
 
 	def __init__(self, houses, width, depth):
 		self.houses = houses
-		self.width = 120
-		self.depth = 160
+		self.width = width
+		self.depth = depth
 
 		# Save locations in a dict? BTW this isn't really correct, because we have houses that have
 		# floats as dimensions
+		self.land = {}
 		for i in range(0,120):
 			for j in range(0,160):
 				self.land[(i,j)] = "empty"
+	
+	def markLand(self, new_location, old_location):
+		"""
+		Marks the new location as full and old as empty
+		"""
+		for i in range(old_location[0], old_location[2]):
+			for j in range(old_location[1], old_location[3]):
+				self.land[(i,j)] = "empty"
+		
+		for i in range(new_location[0], new_location[2]):
+			for j in range(new_location[1], new_location[3]):
+				self.land[(i,j)] = "full"
+		return self.land
 
-	def otherHouseTouching(self,location):
+	def otherHouseTouching(self, location):
 		"""
 		Checks if the house is touching any of the other houses.
 		Returns True or False
 		"""
 		pass
 
-	def isLocationViable(self, location):
+	def isLocationViable(self, location, min_dist):
 		"""
-		Checks if the location of the house is viable wrt the land 
+		Checks if the location of the house is viable wrt the land
+		
+		Location is a tuple with 4 elements (x0, y0, x1, y1)
+		min_dist is the minimum distance the house has wrt the land
 		Returns true or False
 		"""
-		pass
+		return (location[0] + min_dist > 0 and
+			location[2] + min_dist < self.width and
+			location[1] + min_dist > 0 and
+			location[3] + min_dist < self.depth)
 
 class House(object):
 	"""
@@ -39,7 +59,10 @@ class House(object):
 
 	House object must be located within the areas of the field at all times
 	Probably needs some method to move the house to a different location and
-	subsequently re-evaluate the score
+	subsequently re-evaluate the score.
+	
+	I'm not actually sure we need this parent class for the other houses, because the ONLY thing that differs about
+	the houses are the dimensions... they all act in the exact same manner.
 	"""
 	
 	def __init__(self, width, depth, value, bonus):
@@ -144,7 +167,26 @@ def Visualisation():
 	score.set("Value of the land is: " +str(value))
 
 	master.mainloop()
-
-
+	
+def simulation(variant):
+	"""
+	Just starting creating the land and adding houses to it.
+	"""
+	# Create the land and amount of houses
+	land = Land(variant, 120, 160)
+	houses_amount = [house*variant for house in [0.6, 0.25, 0.15]]
+	houses = []
+	
+	# Add houses to the house list
+	for i in range(int(houses_amount[0])):
+		houses.append(Small(8, 8, 285, 1.03))
+	for i in range(int(houses_amount[1])):
+		houses.append(Medium(10, 7.5, 399, 1.04))
+	for i in range(int(houses_amount[2])):
+		houses.append(Big(11, 10.5, 610, 1.06))
+	
+	# I guess now we've got to somehow create an initial state for all the houses and then some algorithm
+	# to optimize the score.
+	
 if __name__ == "__main__":
 	Visualisation()
