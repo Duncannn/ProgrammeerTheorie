@@ -31,8 +31,8 @@ def rect_distance((x1, y1, x1b, y1b), (x2, y2, x2b, y2b)):
 	"""
 	left = x2b < x1
 	right = x1b < x2
-	bottom = y2b < y1
-	top = y1b < y2
+	bottom = y2b > y1
+	top = y1b > y2
 	if top and left:
 		return calculateDistance(x1, y1b, x2b, y2)
 	elif left and bottom:
@@ -46,9 +46,9 @@ def rect_distance((x1, y1, x1b, y1b), (x2, y2, x2b, y2b)):
 	elif right:
 		return x2 - x1b
 	elif bottom:
-		return y1 - y2b
+		return y2b - y1
 	elif top:
-		return y2 - y1b
+		return y1b - y2
 
 
 class Position(object):
@@ -431,8 +431,8 @@ class House(object):
 		!Possibly a useless function! (purpose is testing)
 		"""
 		# edges of the land
-		land_edges = ((0,self.land.getDepth()),(self.land.getWidth(),self.land.getDepth()),
-                    		(self.land.getWidth(),0),(0,0))
+		land_edges = ((0,0),(self.land.getWidth(),0),(self.land.getWidth(),
+                 self.land.getDepth()),(0,self.land.getDepth()))
   		# edges of the house                    
 		house_edges = self.getEdges()
 		distances = []
@@ -483,10 +483,10 @@ class House(object):
 		x_val = self.location.getX()
 		y_val = self.location.getY()
   
- 		left_bottom = (x_val - (self.width/2), y_val - (self.depth/2))
- 		right_bottom = (x_val + (self.width/2), y_val - (self.depth/2))
- 		left_top = (x_val - (self.width/2), y_val + (self.depth/2))
- 		right_top = (x_val + (self.width/2), y_val + (self.depth/2))   
+ 		left_bottom = (x_val - (self.width/2), y_val + (self.depth/2))
+ 		right_bottom = (x_val + (self.width/2), y_val + (self.depth/2))
+ 		left_top = (x_val - (self.width/2), y_val - (self.depth/2))
+ 		right_top = (x_val + (self.width/2), y_val - (self.depth/2))   
 		return (left_top,right_top,right_bottom,left_bottom)
 
 
@@ -678,7 +678,7 @@ def simulation():
 	return monitoring
 
 if __name__ == "__main__":
-	#random.seed(3)
+	random.seed(3)
 	monitoring = simulation()
 	performancePlots(monitoring)
          
