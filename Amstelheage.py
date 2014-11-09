@@ -29,6 +29,7 @@ def rect_distance((x1, y1, x1b, y1b), (x2, y2, x2b, y2b)):
 	Purpose:
 	Computing minimum distance between rectangles.
 	"""
+	#top and bottom wrong way round
 	left = x2b < x1
 	right = x1b < x2
 	bottom = y2b > y1
@@ -170,7 +171,7 @@ class Land(object):
 		edges2 = house2.getEdges()
 		# computing minimum distance between houses 
 		return rect_distance((edges1[3][0],edges1[3][1],edges1[1][0],edges1[1][1])
-                          ,(edges2[3][0],edges2[3][1],edges2[1][0],edges2[1][1]))
+                            ,(edges2[3][0],edges2[3][1],edges2[1][0],edges2[1][1]))
      
      
 	def getVrijstand(self, location, specifications):
@@ -183,13 +184,14 @@ class Land(object):
 		Purpose:
 		Computing the bonus vrijstand of a given house (== location, specification).
 		"""
+		wall = False
 		# makes a "checkhouse" based on locations and specifications
 		checkHouse = House(self, specifications[0], specifications[1], 0, 0, specifications[2], location)
 		# minimum distance for this type of house
 		minimum_distance = specifications[2]
 		all_distances = []
 		# first value is bonus vrijstand if checkhouse would be the only house in the land
-		all_distances.append(checkHouse.getMaxBorderDistance()-minimum_distance)
+		all_distances.append(checkHouse.getMaxBorderDistance() - minimum_distance)
 		neighbor_name = "No neighbor"
 		# loop through all the houses
 		for house in self.land:
@@ -198,10 +200,17 @@ class Land(object):
 				pass
 			else:
 				distance = self.getMinDistance(checkHouse,house)
+				#print distance
 				# append the difference between the distance and the minimum distance
 				all_distances.append(distance-minimum_distance)
 				# save the name of the nearest house
 				neighbor_name = house.getHouseName()
+		if wall:
+			distance_wall = min(math.fabs(checkHouse.location.getX()+0.5*specifications[0]+specifications[2]-self.width),
+								math.fabs(checkHouse.location.getX()-0.5*specifications[0]-specifications[2]),
+								math.fabs(checkHouse.location.getY()+0.5*specifications[1]+specifications[2]-self.depth),
+								math.fabs(checkHouse.location.getY()-0.5*specifications[1]-specifications[2]))
+			all_distances.append(distance_wall)
 		return (min(all_distances), neighbor_name)
 
 
@@ -594,8 +603,10 @@ def performancePlots(monitoring):
  	length = len(monitoring)
   	pylab.figure()
    	pylab.subplot(1,1,1)
-    	pylab.plot(range(length),monitoring,color="blue", linewidth=1.0, linestyle="-")
-     	pylab.title("Performance Plots")
+   	for j in range(length):
+   		pylab.plot(range(len(monitoring[j])), monitoring[j], linewidth=1.0, linestyle="-")
+    #	pylab.plot(range(length),monitoring,color="blue", linewidth=1.0, linestyle="-")
+    	pylab.title("Performance Plots")
 	pylab.show()
     
 
@@ -610,11 +621,14 @@ def simulation():
 	"""
 	# Initialise variables
 	m = 0
-	variant = 60
+	variant = 20
+	randomizations = 10
+	house_changes = 10000
  	monitoring = []
 	best_solution = (0, None)
-	for j in range(5):
-		# create land     
+	for j in range(randomizations):
+		# create land
+		monitoring_help = []
 		land = Land(variant, 120, 160)
 		houses_amount = [house * variant for house in [0.6, 0.25, 0.15]]
 		houses = []
@@ -656,29 +670,39 @@ def simulation():
 			# adding their vijstand and neighbors to houses
 			house.addVrijstand()   
 
-		monitoring.append(initial_value)
+		monitoring_help.append(initial_value)
       
-		current_value = initial_value  
-		for i in range(5000):
+		current_value = initial_value
+		k=0
+		stop_list = [current_value]
+		for i in range(house_changes):
 			#print i
 			house = random.choice(houses)
    			current_value += house.updatePosition()
-			monitoring.append(current_value)
-			   
+   			house.addVrijstand()
+			monitoring_help.append(current_value)
+			if i%200 == 0 and i > 0:
+				k += 1
+				stop_list.append(current_value)
+				if 100*(stop_list[k]/stop_list[k-1]-1) < 0.1:
+					print "Stopped at", i
+					break
+				#print 100*(stop_list[k]/stop_list[k-1]-1)
+
+		monitoring.append(monitoring_help)
 		for house in houses:
 			total_value_vrijstand += house.getHouseValue()[0]
 		if total_value_vrijstand > best_solution[0]:
 			best_solution = (total_value_vrijstand, land.land)
 		print j+1, total_value_vrijstand
 	# Visualise the result
-	land.getTotalValue()
 	print initial_value
 	print "The best solution is           :", "{:,}".format(best_solution[0]*1000)
 	Visualisation(best_solution)
 	return monitoring
 
 if __name__ == "__main__":
-	random.seed(3)
+	#random.seed(3)
 	monitoring = simulation()
 	performancePlots(monitoring)
          
