@@ -5,6 +5,7 @@ import math
 import random
 from Tkinter import *
 import pylab
+import time
 
 def calculateDistance(x1,y1,x2,y2):
 	"""
@@ -96,7 +97,7 @@ class Land(object):
 		self.houses = houses
 		self.width = width
 		self.depth = depth
-		self.land = []
+		self.land = {}
   
   
 	def getWidth(self):
@@ -116,7 +117,8 @@ class Land(object):
 		Purpose:
 		Appends the location to the list of locations where the land is occupied.
 		"""
-		self.land.append(house)
+		name = house.getHouseName()
+		self.land[name] = house
 		return 0 
 
 
@@ -129,7 +131,8 @@ class Land(object):
 		Purpose:
 		Removes the location from the list.  
 		"""
-		self.land.remove(house)
+		name = house.getHouseName()
+		del self.land[name]
 		return 0
 
 
@@ -148,7 +151,7 @@ class Land(object):
 		# minimum distance for this type of house
 		minimum_distance = specifications[2]
 		# loop through all the houses
-		for house in self.land:
+		for key,house in self.land.iteritems():
 			# Calculates distance between checkhouse and all other houses
 			distance = self.getMinDistance(checkHouse,house)
 			# If distance is smaller than minimum distance then return False
@@ -174,7 +177,7 @@ class Land(object):
                             ,(edges2[3][0],edges2[3][1],edges2[1][0],edges2[1][1]))
      
      
-	def getVrijstand(self, location, specifications):
+	def getVrijstand(self, checkHouse):
 		"""
 		Input:
 		Location is a position object.
@@ -184,17 +187,29 @@ class Land(object):
 		Purpose:
 		Computing the bonus vrijstand of a given house (== location, specification).
 		"""
-		wall = False
+		wall = False 
 		# makes a "checkhouse" based on locations and specifications
-		checkHouse = House(self, specifications[0], specifications[1], 0, 0, specifications[2], location)
+		# checkHouse = House(self, specifications[0], specifications[1], 0, 0, specifications[2], location)
 		# minimum distance for this type of house
-		minimum_distance = specifications[2]
+		minimum_distance = checkHouse.getHouseSpecs()[2]
 		all_distances = []
 		# first value is bonus vrijstand if checkhouse would be the only house in the land
 		all_distances.append(checkHouse.getMaxBorderDistance() - minimum_distance)
-		neighbor_name = "No neighbor"
+  
+  
+ 		neighbors = checkHouse.getHouseNeighbor()
+   
+ 		if len(neighbors) > 0:
+			house_names = neighbors  
+ 		else:
+			house_names = self.getHouses().keys()
+		neighbor_name = []
+		neighbor_distance = []
+		neighbor_name.append("start value")
+		neighbor_distance.append(999)
 		# loop through all the houses
-		for house in self.land:
+		for key in house_names:
+			house = self.getHouses()[key]
 			# distance is zero if comparing the same  house
 			if house.getHousePosition() == checkHouse.getHousePosition():
 				pass
@@ -204,7 +219,14 @@ class Land(object):
 				# append the difference between the distance and the minimum distance
 				all_distances.append(distance-minimum_distance)
 				# save the name of the nearest house
-				neighbor_name = house.getHouseName()
+				if distance < max(neighbor_distance):
+					neighbor_name.append(house.getHouseName())
+					neighbor_distance.append(distance)
+					if len(neighbor_distance) > 8:
+					     max_index = neighbor_distance.index(max(neighbor_distance))     
+					     neighbor_distance.remove(neighbor_distance[max_index])
+					     neighbor_name.remove(neighbor_name[max_index])
+     
 		if wall:
 			distance_wall = min(math.fabs(checkHouse.location.getX()+0.5*specifications[0]+specifications[2]-self.width),
 								math.fabs(checkHouse.location.getX()-0.5*specifications[0]-specifications[2]),
@@ -226,7 +248,7 @@ class Land(object):
 		# set initial vrijstand to zero
 		vrijstand = 0
 		# loops trough all houses and adds vijstand
-		for house in self.land:
+		for key,house in self.land.iteritems():
 			vrijstand += house.getHouseVrijstand()
 		# prints total vrijstand
 		print "Total vrijstand is          :", vrijstand
@@ -244,8 +266,10 @@ class Land(object):
 		"""
 		total_val = 0
 		# loops trough all houses and adds value
-		for house in self.land:
+		for key,house in self.land.iteritems():
+			house.addVrijstand()   
 			total_val += house.getHouseValue()[0]
+   
 		return total_val
 
 
@@ -282,7 +306,7 @@ class House(object):
 	Probably needs some method to move the house to a different location and
 	subsequently re-evaluate the score.
 	"""
-	def __init__(self, land, width, depth, value, bonus, min_dist, location, vrijstand = 0, name = None, neighbor = None):
+	def __init__(self, land, width, depth, value, bonus, min_dist, location, vrijstand = 0, name = None, neighbor = [], total_val = 0, old_val = 0):
 		self.land = land
 		self.width = width
 		self.depth = depth
@@ -292,7 +316,9 @@ class House(object):
 		self.location = location
 		self.vrijstand = vrijstand
 		self.name = name
-		self.neighbor = neighbor  
+		self.neighbor = neighbor
+		self.total_val = total_val  
+		self.old_val = old_val
 		self.spec = [self.width, self.depth, self.min_dist]
 
 
@@ -380,8 +406,8 @@ class House(object):
 		Adding bonus vrijstand and name of neighbor to house.
 		"""
 		# Create a random location
-		self.vrijstand = self.land.getVrijstand(self.location, self.spec)[0]
-		self.neighbor = self.land.getVrijstand(self.location, self.spec)[1]
+		self.vrijstand = self.land.getVrijstand(self)[0]
+		self.neighbor = self.land.getVrijstand(self)[1]
 		return 0
 
 
@@ -465,9 +491,22 @@ class House(object):
 		Purpose:
 		Calculation the value of the house.
 		"""     
-		vrijstand = self.land.getVrijstand(self.location, self.spec)[0]
-		return (self.value * (1 + vrijstand * self.bonus), self.value)
+		self.old_val = self.total_val     
+		vrijstand = self.vrijstand
+		self.total_val = self.value * (1 + vrijstand * self.bonus)
+		return (self.total_val, self.value)
 
+	def getOldHouseValue(self):
+		"""
+		Input:
+		None.
+		Return:
+		Location of house as position object.
+		Purpose:
+		Returning the location of the center of the house.
+		""" 
+		return self.old_val
+  
 	def getHousePosition(self):
 		"""
 		Input:
@@ -513,7 +552,7 @@ class House(object):
 		""" 
 		# saving old position
 		old_pos = self.location
-		old_value = self.getHouseValue()[0]
+		#old_value = self.getHouseValue()[0]
 		# removing old position from land
 		self.land.removeLandAtPosition(self)
 		# create a new position
@@ -523,14 +562,30 @@ class House(object):
 		if self.isPositionInLand(new_pos):
 			# checks if all minimum distances are met  
 			if self.land.checkPosition(new_pos, self.spec):
-				self.location = new_pos
-				new_value = self.getHouseValue()[0]
+				#self.location = new_pos
+				self.land.markLandAtPosition(self)
+				self.addVrijstand()
+ 				value_change = self.getHouseValue()[0] - self.getOldHouseValue()
+ 				for neighbor in self.getHouseNeighbor():
+					house = self.land.getHouses()[neighbor]
+					house.addVrijstand()
+ 					value_change += house.getHouseValue()[0] - house.getOldHouseValue()   
 				# if new value is higher, move house to new position
-				if new_value > old_value:
-					self.land.markLandAtPosition(self)
-					return new_value-old_value
+				print "Value change:"
+				print value_change   
+				if value_change > 0:
+					return value_change
 				# if randomUpdate is switched on, move even without
-				# value increase               
+				# value increase
+				else:
+					self.land.removeLandAtPosition(self)
+					self.location = old_pos
+					self.land.markLandAtPosition(self)
+					# update all neighbors with old vrijstand
+					# getTotalValue loops trough all houses and updates vrijstand and value    
+					self.land.getTotalValue()
+					return 0
+           
 				if randomUpdate:
 					return 0
 		# if no value increase, move to old position
@@ -571,22 +626,28 @@ def Visualisation(inputs):
 
 	# Plot the houses. NOTE, because the scaling is 40 pixels for 10 meters, 
 	# it is 4 pixels for 1 meter
-	for coordinates in inputs[1]:
+	for keys, coordinates in inputs[1].iteritems():  
 		if coordinates.getHouseSpecs() == [8.0, 8.0, 2.0]:
 			w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-4)*4, 
 							   scaling+(coordinates.getHousePosition().getY()-4)*4, 
 							   scaling+(coordinates.getHousePosition().getX()+4)*4, 
 							   scaling+(coordinates.getHousePosition().getY()+4)*4, fill ="Blue")
+ 			w.create_text(scaling+(coordinates.getHousePosition().getX())*4,
+							 scaling+(coordinates.getHousePosition().getY())*4, text = keys)
 		elif coordinates.getHouseSpecs() == [10.0, 7.5, 3.0]:
 			w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-5)*4, 
 							   scaling+(coordinates.getHousePosition().getY()-3.75)*4, 
 							   scaling+(coordinates.getHousePosition().getX()+5)*4, 
 							   scaling+(coordinates.getHousePosition().getY()+3.75)*4, fill ="Red")
+ 			w.create_text(scaling+(coordinates.getHousePosition().getX())*4,
+							 scaling+(coordinates.getHousePosition().getY())*4, text = keys)
 		else:
 			w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-5.5)*4, 
 							   scaling+(coordinates.getHousePosition().getY()-5.25)*4, 
 							   scaling+(coordinates.getHousePosition().getX()+5.5)*4, 
 							   scaling+(coordinates.getHousePosition().getY()+5.25)*4, fill ="Yellow")
+ 			w.create_text(scaling+(coordinates.getHousePosition().getX())*4,
+							 scaling+(coordinates.getHousePosition().getY())*4, text = keys)
 
 	master.mainloop()
 
@@ -620,14 +681,18 @@ def simulation():
 	I'm going to try and randomize the houses and check if the algorithm we have works
 	"""
 	# Initialise variables
-	m = 0
+	
 	variant = 20
-	randomizations = 10
+	randomizations = 3
 	house_changes = 10000
  	monitoring = []
 	best_solution = (0, None)
+
+ 	start = time.clock()  
+ 
 	for j in range(randomizations):
 		# create land
+		m = 0
 		monitoring_help = []
 		land = Land(variant, 120, 160)
 		houses_amount = [house * variant for house in [0.6, 0.25, 0.15]]
@@ -656,19 +721,23 @@ def simulation():
 				position = land.getRandomPosition()
 				good_loc = house.checkHousePosition(position)
 			# placing house on land  
-			house.setHousePosition(position)
- 			# giving a name to the house that was set on land  
-			name = str(position.getX()) + "-" + str(position.getY())
+			name = "house" + str(m)
 			house.addHouseName(name)
+			house.setHousePosition(position)
+   
+ 			# giving a name to the house that was set on land  
+			#name = "house" + str(m)
+			#house.addHouseName(name)
 			m +=1
 			#print m
 
 		initial_value = 0
 		for house in houses:
+			house.addVrijstand()
 			# computing value of each house
 			initial_value += house.getHouseValue()[0]
 			# adding their vijstand and neighbors to houses
-			house.addVrijstand()   
+   
 
 		monitoring_help.append(initial_value)
       
@@ -678,7 +747,11 @@ def simulation():
 		for i in range(house_changes):
 			#print i
 			house = random.choice(houses)
+			print "Current_value:"
+			print current_value
    			current_value += house.updatePosition()
+			print "Current_value:"
+			print current_value      
    			house.addVrijstand()
 			monitoring_help.append(current_value)
 			if i%200 == 0 and i > 0:
@@ -696,8 +769,11 @@ def simulation():
 			best_solution = (total_value_vrijstand, land.land)
 		print j+1, total_value_vrijstand
 	# Visualise the result
+ 	end = time.clock()
 	print initial_value
 	print "The best solution is           :", "{:,}".format(best_solution[0]*1000)
+	print "Time elapsed:"
+	print str(round(end - start,2)) + " seconds"
 	Visualisation(best_solution)
 	return monitoring
 
