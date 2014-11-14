@@ -155,7 +155,7 @@ class Land(object):
 			# Calculates distance between checkhouse and all other houses
 			distance = self.getMinDistance(checkHouse,house)
 			# If distance is smaller than minimum distance then return False
-			if distance < minimum_distance:
+			if distance < max(minimum_distance, house.min_dist):
        				return False
 		return True
            
@@ -222,16 +222,24 @@ class Land(object):
 				if distance < max(neighbor_distance):
 					neighbor_name.append(house.getHouseName())
 					neighbor_distance.append(distance)
+<<<<<<< Updated upstream
 					if len(neighbor_distance) > 8:
+=======
+<<<<<<< HEAD
+					if len(neighbor_distance) > 19:
+=======
+					if len(neighbor_distance) > 8:
+>>>>>>> FETCH_HEAD
+>>>>>>> Stashed changes
 					     max_index = neighbor_distance.index(max(neighbor_distance))     
 					     neighbor_distance.remove(neighbor_distance[max_index])
 					     neighbor_name.remove(neighbor_name[max_index])
      
 		if wall:
-			distance_wall = min(math.fabs(checkHouse.location.getX()+0.5*specifications[0]+specifications[2]-self.width),
-								math.fabs(checkHouse.location.getX()-0.5*specifications[0]-specifications[2]),
-								math.fabs(checkHouse.location.getY()+0.5*specifications[1]+specifications[2]-self.depth),
-								math.fabs(checkHouse.location.getY()-0.5*specifications[1]-specifications[2]))
+			distance_wall = min(math.fabs(checkHouse.location.getX()+0.5*checkHouse.spec[0]+checkHouse.spec[2]-self.width),
+								math.fabs(checkHouse.location.getX()-0.5*checkHouse.spec[0]-checkHouse.spec[2]),
+								math.fabs(checkHouse.location.getY()+0.5*checkHouse.spec[1]+checkHouse.spec[2]-self.depth),
+								math.fabs(checkHouse.location.getY()-0.5*checkHouse.spec[1]-checkHouse.spec[2]))
 			all_distances.append(distance_wall)
 		return (min(all_distances), neighbor_name)
 
@@ -556,7 +564,10 @@ class House(object):
 		# removing old position from land
 		self.land.removeLandAtPosition(self)
 		# create a new position
-		self.location = self.location.getNewPosition(0.5)
+		if True:
+			self.location = self.location.getNewPosition(random.uniform(2,4))
+		else:
+			self.location = self.location.getNewPosition(0.5)
 		new_pos = self.location
 		# checks is the position is in land
 		if self.isPositionInLand(new_pos):
@@ -570,10 +581,21 @@ class House(object):
 					house = self.land.getHouses()[neighbor]
 					house.addVrijstand()
  					value_change += house.getHouseValue()[0] - house.getOldHouseValue()   
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+				# if new value is higher, move house to new position  
+				if value_change > 0 or randomUpdate:
+=======
+>>>>>>> Stashed changes
 				# if new value is higher, move house to new position
 				print "Value change:"
 				print value_change   
 				if value_change > 0:
+<<<<<<< Updated upstream
+=======
+>>>>>>> FETCH_HEAD
+>>>>>>> Stashed changes
 					return value_change
 				# if randomUpdate is switched on, move even without
 				# value increase
@@ -594,6 +616,57 @@ class House(object):
 		self.land.markLandAtPosition(self)
 		return 0
  
+class NewVisualisation(object):
+	def __init__(self, num_houses, width, height, delay = 0.1):
+		self.delay = delay
+		self.width = width
+		self.height = height
+		self.num_houses = num_houses
+
+		self.master = Tk()
+		self.w = Canvas(self.master, width=800, height=1000)
+		self.w.pack()
+		self.master.update()
+
+		self.w.create_rectangle(40, 40, 520, 680, fill="green", width=0)
+
+		self.time = 0
+		self.master.update()
+
+	def draw_houses(self, inputs):
+		scaling = 40
+		for keys, coordinates in inputs[1].iteritems():  
+			if coordinates.getHouseSpecs() == [8.0, 8.0, 2.0]:
+				self.w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-4)*4, 
+								   scaling+(coordinates.getHousePosition().getY()-4)*4, 
+								   scaling+(coordinates.getHousePosition().getX()+4)*4, 
+								   scaling+(coordinates.getHousePosition().getY()+4)*4, fill ="Blue")
+				self.w.create_text(scaling+(coordinates.getHousePosition().getX())*4,
+							 scaling+(coordinates.getHousePosition().getY())*4, text = keys)
+			elif coordinates.getHouseSpecs() == [10.0, 7.5, 3.0]:
+				self.w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-5)*4, 
+								   scaling+(coordinates.getHousePosition().getY()-3.75)*4, 
+								   scaling+(coordinates.getHousePosition().getX()+5)*4, 
+								   scaling+(coordinates.getHousePosition().getY()+3.75)*4, fill ="Red")
+				self.w.create_text(scaling+(coordinates.getHousePosition().getX())*4,
+							 scaling+(coordinates.getHousePosition().getY())*4, text = keys)
+			else:
+				self.w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-5.5)*4, 
+								   scaling+(coordinates.getHousePosition().getY()-5.25)*4, 
+								   scaling+(coordinates.getHousePosition().getX()+5.5)*4, 
+								   scaling+(coordinates.getHousePosition().getY()+5.25)*4, fill ="Yellow")
+				self.w.create_text(scaling+(coordinates.getHousePosition().getX())*4,
+							 scaling+(coordinates.getHousePosition().getY())*4, text = keys)
+
+	def update(self, inputs):
+		self.w.create_rectangle(40, 40, 520, 680, fill="green", width=0)
+		self.draw_houses(inputs)
+		self.time += 1
+		self.master.update()
+		time.sleep(self.delay)
+
+	def done(self):
+		mainloop()
 
 def Visualisation(inputs):
 	"""
@@ -681,10 +754,19 @@ def simulation():
 	I'm going to try and randomize the houses and check if the algorithm we have works
 	"""
 	# Initialise variables
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+	variant = 20
+	randomizations = 1
+	house_changes = 5000
+=======
+>>>>>>> Stashed changes
 	
 	variant = 20
 	randomizations = 3
 	house_changes = 10000
+>>>>>>> FETCH_HEAD
  	monitoring = []
 	best_solution = (0, None)
 
@@ -692,7 +774,15 @@ def simulation():
  
 	for j in range(randomizations):
 		# create land
+<<<<<<< Updated upstream
 		m = 0
+=======
+<<<<<<< HEAD
+		m = 1
+=======
+		m = 0
+>>>>>>> FETCH_HEAD
+>>>>>>> Stashed changes
 		monitoring_help = []
 		land = Land(variant, 120, 160)
 		houses_amount = [house * variant for house in [0.6, 0.25, 0.15]]
@@ -721,7 +811,15 @@ def simulation():
 				position = land.getRandomPosition()
 				good_loc = house.checkHousePosition(position)
 			# placing house on land  
+<<<<<<< Updated upstream
 			name = "house" + str(m)
+=======
+<<<<<<< HEAD
+			name = "h" + str(m)
+=======
+			name = "house" + str(m)
+>>>>>>> FETCH_HEAD
+>>>>>>> Stashed changes
 			house.addHouseName(name)
 			house.setHousePosition(position)
    
@@ -732,6 +830,7 @@ def simulation():
 			#print m
 
 		initial_value = 0
+		anim = NewVisualisation(variant, 120, 160)
 		for house in houses:
 			house.addVrijstand()
 			# computing value of each house
@@ -745,8 +844,32 @@ def simulation():
 		k=0
 		stop_list = [current_value]
 		for i in range(house_changes):
-			#print i
 			house = random.choice(houses)
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+
+			# Simulated annealing
+			if i < house_changes/2:
+				random_num = i/float(house_changes*2)
+			else:
+				random_num = 0.5 - i/float(house_changes*2)
+
+			if random.random() < random_num:
+				current_value += house.updatePosition(True)
+			else:
+   				current_value += house.updatePosition()
+
+   			# Hill Climber
+   			#current_value += house.updatePosition()   
+			#if i%200 == 0 and i > 0.8*house_changes:
+			#	k += 1
+			#	stop_list.append(current_value)
+			#	if 100*(stop_list[k]/stop_list[k-1]-1) < 0.1:
+			#		print "Stopped at", i
+			#		break
+=======
+>>>>>>> Stashed changes
 			print "Current_value:"
 			print current_value
    			current_value += house.updatePosition()
@@ -760,7 +883,14 @@ def simulation():
 				if 100*(stop_list[k]/stop_list[k-1]-1) < 0.1:
 					print "Stopped at", i
 					break
+>>>>>>> FETCH_HEAD
 				#print 100*(stop_list[k]/stop_list[k-1]-1)
+
+			house.addVrijstand()
+			monitoring_help.append(current_value)
+			if i%50 ==0:
+				anim.update((0, land.land))
+				print i
 
 		monitoring.append(monitoring_help)
 		for house in houses:
@@ -768,17 +898,27 @@ def simulation():
 		if total_value_vrijstand > best_solution[0]:
 			best_solution = (total_value_vrijstand, land.land)
 		print j+1, total_value_vrijstand
+		anim.done()
 	# Visualise the result
  	end = time.clock()
+<<<<<<< Updated upstream
+=======
+<<<<<<< HEAD
+	print "The best solution is           :", "{:,}".format(best_solution[0]*1000)
+	print "Time elapsed:"
+	print str(round(end - start,2)) + " seconds"
+	#Visualisation(best_solution)
+=======
+>>>>>>> Stashed changes
 	print initial_value
 	print "The best solution is           :", "{:,}".format(best_solution[0]*1000)
 	print "Time elapsed:"
 	print str(round(end - start,2)) + " seconds"
 	Visualisation(best_solution)
+>>>>>>> FETCH_HEAD
 	return monitoring
 
 if __name__ == "__main__":
 	#random.seed(3)
 	monitoring = simulation()
 	performancePlots(monitoring)
-         
