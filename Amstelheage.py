@@ -6,6 +6,7 @@ import random
 from Tkinter import *
 import pylab
 import time
+import copy
 
 def calculateDistance(x1,y1,x2,y2):
 	"""
@@ -30,7 +31,6 @@ def rect_distance((x1, y1, x1b, y1b), (x2, y2, x2b, y2b)):
 	Purpose:
 	Computing minimum distance between rectangles.
 	"""
-	#top and bottom wrong way round
 	left = x2b < x1
 	right = x1b < x2
 	bottom = y2b > y1
@@ -198,6 +198,9 @@ class Land(object):
   
   
  		neighbors = checkHouse.getHouseNeighbor()
+
+ 		#if random.random() < 0.05:
+ 		#	neighbors = []
    
  		if len(neighbors) > 0:
 			house_names = neighbors  
@@ -223,7 +226,7 @@ class Land(object):
 					neighbor_name.append(house.getHouseName())
 					neighbor_distance.append(distance)
 
-					if len(neighbor_distance) > 8:
+					if len(neighbor_distance) > 15:
 					     max_index = neighbor_distance.index(max(neighbor_distance)) 
 					     neighbor_distance.remove(neighbor_distance[max_index])
 					     neighbor_name.remove(neighbor_name[max_index])
@@ -557,8 +560,8 @@ class House(object):
 		# removing old position from land
 		self.land.removeLandAtPosition(self)
 		# create a new position
-		if True:
-			self.location = self.location.getNewPosition(random.uniform(2,4))
+		if randomUpdate:
+			self.location = self.location.getNewPosition(random.uniform(4,6))
 		else:
 			self.location = self.location.getNewPosition(0.5)
 		new_pos = self.location
@@ -588,33 +591,41 @@ class House(object):
 					# getTotalValue loops trough all houses and updates vrijstand and value    
 					self.land.getTotalValue()
 					return 0
-           
-				if randomUpdate:
-					return 0
-		# if no value increase, move to old position
+		# if no one of the location criterea failed, move to old position
 		self.location = old_pos
  		# mark house at old position again 
 		self.land.markLandAtPosition(self)
 		return 0
  
 class NewVisualisation(object):
-	def __init__(self, num_houses, width, height, delay = 0.1):
+	def __init__(self, num_houses, width, height, delay = 0.05):
+		# Initialise variables
 		self.delay = delay
 		self.width = width
 		self.height = height
 		self.num_houses = num_houses
 
+		# Create the canvas
 		self.master = Tk()
 		self.w = Canvas(self.master, width=800, height=1000)
 		self.w.pack()
 		self.master.update()
-
 		self.w.create_rectangle(40, 40, 520, 680, fill="green", width=0)
+
+		# Labels for the output
+		lbl = Label(self.master, text="Current land value:")
+		lbl.place(x=550, y=35)
+		self.var = StringVar()
+		self.label = Label(self.master, textvariable=self.var)
+		self.label.place(x=550, y=55)
 
 		self.time = 0
 		self.master.update()
 
 	def draw_houses(self, inputs):
+		"""
+		Draws the houses
+		"""
 		scaling = 40
 		for keys, coordinates in inputs[1].iteritems():  
 			if coordinates.getHouseSpecs() == [8.0, 8.0, 2.0]:
@@ -640,14 +651,28 @@ class NewVisualisation(object):
 							 scaling+(coordinates.getHousePosition().getY())*4, text = keys)
 
 	def update(self, inputs):
+		"""
+		Updates the GUI
+		"""
 		self.w.create_rectangle(40, 40, 520, 680, fill="green", width=0)
 		self.draw_houses(inputs)
+		self.var.set(int(inputs[0]))
 		self.time += 1
 		self.master.update()
 		time.sleep(self.delay)
 
 	def done(self):
+		"""
+		NO IDEA
+		"""
 		mainloop()
+
+	def stop(self):
+		"""
+		Quits the GUI
+		"""
+		time.sleep(3)
+		self.master.destroy()
 
 def Visualisation(inputs):
 	"""
@@ -716,16 +741,144 @@ def performancePlots(monitoring):
 	!NOT DONE YET, has to be improved. Does not account for value decrease (of other houses) while updating houses! 
 	"""
  	length = len(monitoring)
-  	pylab.figure()
-   	pylab.subplot(1,1,1)
    	for j in range(length):
    		pylab.plot(range(len(monitoring[j])), monitoring[j], linewidth=1.0, linestyle="-")
-    #	pylab.plot(range(length),monitoring,color="blue", linewidth=1.0, linestyle="-")
     	pylab.title("Performance Plots")
 	pylab.show()
     
+def createNewLand(land_dict, variant):
+	old_houses = []
+	old_land = Land(variant, 120, 160)
+	for key, house in land_dict.iteritems():
+		# House name and locations
+		#old_houses.append((key, house.position.getX(), house.position.getY()))
+		if int(key[1:]) <= 3:
+			old_houses.append((key, House(old_land, 11.0, 10.5, 610.0, 0.06, 6.0, None), 
+						  	  (house.location.getX(), house.location.getY())))
+		elif 4 <= int(key[1:]) <= 8:
+			old_houses.append((key, House(old_land, 10.0, 7.5, 399.0, 0.04, 3.0, None), 
+						  	  (house.location.getX(), house.location.getY())))
+		else:
+			old_houses.append((key, House(old_land, 8.0, 8.0, 285.0, 0.03, 2.0, None), 
+						  	  (house.location.getX(), house.location.getY())))
+	# Put houses on land
+	old_house = []
+	for house_specs in old_houses:
+		position = Position(house_specs[2][0], house_specs[2][1])
+		house_specs[1].addHouseName(house_specs[0])
+		house_specs[1].setHousePosition(position)
+		old_house.append(house_specs[1])
+	return old_land, old_house
 
-def simulation():
+def hillClimber(land, variant, houses, current_value, gui_updates):
+	"""
+	Hill Climber algorithm
+	"""
+	# Variables for HC
+	house_changes = 1000
+	k = 0
+	monitoring_help = []
+	stop_list = [current_value]
+
+	# Show the GUI
+	if gui_updates:
+		anim = NewVisualisation(variant, 120, 160)
+
+	# Update some random house. Stop if no significant value increase is seen
+	for i in range(house_changes):
+		house = random.choice(houses)
+		current_value += house.updatePosition()   
+		if i%200 == 0 and i > 1:
+			k += 1
+			stop_list.append(current_value)
+			if 100*(stop_list[k]/stop_list[k-1]-1) < 0.1:
+				print "Stopped at", i
+				break
+
+		# plot list and update the GUI
+		monitoring_help.append(current_value)
+		if i%50 == 0 and gui_updates:
+			anim.update((current_value, land.land))
+
+	if gui_updates:
+		anim.stop()
+	return land, monitoring_help, current_value
+
+def simulatedAnnealing(land, variant, houses, current_value, gui_updates):
+	"""
+	SA algorithm
+	DOES NOT WORK AT ALL...
+	"""
+	# Initialise variables
+	monitoring_help = []
+	k = 0
+	redraws = 5
+	total_updates = 2000
+	redraw = 0
+	goback = True
+
+	# Show GUI
+	if gui_updates:
+		anim = NewVisualisation(variant, 120, 160)
+
+	# First maximization (HC)
+	for i in range(3000):
+		house = random.choice(houses)
+		current_value += house.updatePosition()
+		monitoring_help.append(current_value)
+		if i%50 == 0 and gui_updates:
+			anim.update((current_value, land.land))
+	# Use the old land as reference, continue with new land
+	good_list = (current_value, land.land)
+
+	while redraw < redraws:
+		k += 1
+		# This is the current best land, make a copy to work on
+		if goback:
+			best_land, best_houses = createNewLand(land.land, variant)
+
+		# This section should set the currentvalue and vrijstand of the new land
+		current_value = 0
+		for house in best_houses:
+			house.addVrijstand()
+			current_value += house.getHouseValue()[0]
+
+		#print k, current_value
+		house = random.choice(best_houses)
+
+		# Allow negative increases half of the time, for half of the total updates
+		random_num = 0.0
+		if (k%total_updates < total_updates/2) and (random.random() < random.random()):
+			current_value += house.updatePosition(True)
+		else:
+			current_value += house.updatePosition()
+		monitoring_help.append(current_value)
+
+		# Vrijstanden arent reverting back... So we go to the old land with new vrijstand.
+		# Continues with land.land but houses are changing
+		if k%total_updates == 0:
+			print current_value
+			# Save if this is the best land, continue the simulation with this best land
+			if current_value > good_list[0]:
+				land = best_land
+				good_list = (current_value, land.land)
+				goback = False
+			# revert to old land by again creating a land which is the best land
+			else:
+				goback = True
+			redraw += 1
+			print redraw
+
+		if k%50 == 0 and redraw < redraws and gui_updates:
+			anim.update((current_value, best_land.land))
+
+	if gui_updates:
+		anim.stop()
+	return good_list, monitoring_help
+
+	# We create a copy of the land we are going to work with.
+
+def simulation(algorithm_type, variant, gui_updates, randomizations):
 	"""
 	Input:
  	None.
@@ -735,14 +888,9 @@ def simulation():
 	I'm going to try and randomize the houses and check if the algorithm we have works
 	"""
 	# Initialise variables
-	variant = 20
-	randomizations = 3
-	house_changes = 10000
  	monitoring = []
-	best_solution = (0, None)
-
+	good_list = (0, None)
  	start = time.clock()  
- 
 	for j in range(randomizations):
 		# create land
 		m = 1
@@ -750,7 +898,6 @@ def simulation():
 		land = Land(variant, 120, 160)
 		houses_amount = [house * variant for house in [0.6, 0.25, 0.15]]
 		houses = []
-		total_value_vrijstand = 0
 		# Add houses to the house list
 		for i in range(int(houses_amount[0])):
 			houses.append(House(land, 8.0, 8.0, 285.0, 0.03, 2.0, None))
@@ -777,91 +924,67 @@ def simulation():
 			name = "h" + str(m)
 			house.addHouseName(name)
 			house.setHousePosition(position)
-   
- 			# giving a name to the house that was set on land  
-			#name = "house" + str(m)
-			#house.addHouseName(name)
 			m +=1
 			#print m
 
 		initial_value = 0
-		anim = NewVisualisation(variant, 120, 160)
 		for house in houses:
 			house.addVrijstand()
 			# computing value of each house
 			initial_value += house.getHouseValue()[0]
 			# adding their vijstand and neighbors to houses
-   
-
 		monitoring_help.append(initial_value)
-      
-		current_value = initial_value
-		k=0
-		stop_list = [current_value]
-		for i in range(house_changes):
-			house = random.choice(houses)
 
-			# Simulated annealing
-			if i < house_changes/2:
-				random_num = i/float(house_changes*2)
-			else:
-				random_num = 0.5 - i/float(house_changes*2)
+		# Simulated Annealing
+		if algorithm_type == "SimulatedAnnealing":
+			good_list, monitoring_help = simulatedAnnealing(land, variant, houses, initial_value, gui_updates)
 
-			if random.random() < random_num:
-				current_value += house.updatePosition(True)
-			else:
-   				current_value += house.updatePosition()
+   		# Hill Climber
+		elif algorithm_type == "HillClimber":
+			land, monitoring_help, total_value = hillClimber(land, variant, houses, initial_value, gui_updates)
 
-   			# Hill Climber
-   			#current_value += house.updatePosition()   
-			#if i%200 == 0 and i > 0.8*house_changes:
-			#	k += 1
-			#	stop_list.append(current_value)
-			#	if 100*(stop_list[k]/stop_list[k-1]-1) < 0.1:
-			#		print "Stopped at", i
-			#		break
-			print "Current_value:"
-			print current_value
-   			current_value += house.updatePosition()
-			print "Current_value:"
-			print current_value      
-   			house.addVrijstand()
-			monitoring_help.append(current_value)
-			if i%200 == 0 and i > 0:
-				k += 1
-				stop_list.append(current_value)
-				if 100*(stop_list[k]/stop_list[k-1]-1) < 0.1:
-					print "Stopped at", i
-					break
-				#print 100*(stop_list[k]/stop_list[k-1]-1)
+			# Check if the previous randomization is better
+			if total_value > good_list[0]:
+				good_list = (total_value, land.land)
+			print j+1, total_value
 
-			house.addVrijstand()
-			monitoring_help.append(current_value)
-			if i%50 ==0:
-				anim.update((0, land.land))
-				print i
+		# Genetic algorithm
+		else:
+			pass
 
+		# Monitoring for the graphs
 		monitoring.append(monitoring_help)
-		for house in houses:
-			total_value_vrijstand += house.getHouseValue()[0]
-		if total_value_vrijstand > best_solution[0]:
-			best_solution = (total_value_vrijstand, land.land)
-		print j+1, total_value_vrijstand
-		anim.done()
+		if algorithm_type == "SimulatedAnnealing":
+			break
 	# Visualise the result
  	end = time.clock()
-	print "The best solution is           :", "{:,}".format(best_solution[0]*1000)
-	print "Time elapsed:"
-	print str(round(end - start,2)) + " seconds"
-	#Visualisation(best_solution)
-	print initial_value
-	print "The best solution is           :", "{:,}".format(best_solution[0]*1000)
-	print "Time elapsed:"
-	print str(round(end - start,2)) + " seconds"
-	Visualisation(best_solution)
+	print "The best solution is           :", "{:,}".format(good_list[0]*1000)
+	print "Time elapsed: " +str(round(end - start,2)) +" seconds"
+	Visualisation(good_list)
+
+	value_check = 0
+	for key, house in good_list[1].iteritems(): 
+		value_check += house.getHouseValue()[0]
+	print value_check
 	return monitoring
 
-#if __name__ == "__main__":
-#	#random.seed(3)
-#	monitoring = simulation()
-#	performancePlots(monitoring)
+def test():
+	times = 0
+	reps = 20000000
+	for i in range(reps):
+		if random.random()< random.random():
+			times += 1
+	print times/float(reps)*100
+
+
+if __name__ == "__main__":
+	gui_updates = True
+	#random.seed(3)
+	randomizations = 1
+	variant = 20
+	algorithm1 = "HillClimber"
+	algorithm2 = "SimulatedAnnealing"
+	algorithm3 = "GeneticAlgorithm"
+	monitoring = simulation(algorithm2, variant, gui_updates, randomizations)
+	performancePlots(monitoring)
+	#test()
