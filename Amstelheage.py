@@ -195,11 +195,7 @@ class Land(object):
         # first value is bonus vrijstand if checkhouse would be the only house in the land
         all_distances.append(checkHouse.getMaxBorderDistance() - minimum_distance)
   
-  
         neighbors = checkHouse.getHouseNeighbor()
-
-         #if random.random() < 0.05:
-         #    neighbors = []
    
         if len(neighbors) > 0:
             house_names = neighbors  
@@ -225,11 +221,11 @@ class Land(object):
                     neighbor_name.append(house.getHouseName())
                     neighbor_distance.append(distance)
 
-                    if len(neighbor_distance) > 15:
+                    if len(neighbor_distance) > 19:
                          max_index = neighbor_distance.index(max(neighbor_distance)) 
                          neighbor_distance.remove(neighbor_distance[max_index])
                          neighbor_name.remove(neighbor_name[max_index])
-     
+
         if wall:
             distance_wall = min(math.fabs(checkHouse.location.getX()+0.5*checkHouse.spec[0]+checkHouse.spec[2]-self.width),
                                 math.fabs(checkHouse.location.getX()-0.5*checkHouse.spec[0]-checkHouse.spec[2]),
@@ -533,15 +529,14 @@ class House(object):
         """ 
         x_val = self.location.getX()
         y_val = self.location.getY()
-  
+
         left_bottom = (x_val - (self.width/2), y_val + (self.depth/2))
         right_bottom = (x_val + (self.width/2), y_val + (self.depth/2))
         left_top = (x_val - (self.width/2), y_val - (self.depth/2))
         right_top = (x_val + (self.width/2), y_val - (self.depth/2))   
         return (left_top,right_top,right_bottom,left_bottom)
 
-
-    def updatePosition(self, randomUpdate = False):
+    def updatePosition(self, temperature = 0.124632563, randomUpdate = False):
         """
         Input:
         RandomUpdate boolian, if set to true, house gets new position
@@ -559,10 +554,7 @@ class House(object):
         # removing old position from land
         self.land.removeLandAtPosition(self)
         # create a new position
-        if randomUpdate:
-            self.location = self.location.getNewPosition(random.uniform(4,6))
-        else:
-            self.location = self.location.getNewPosition(0.5)
+        self.location = self.location.getNewPosition(5.5-temperature/2000)
         new_pos = self.location
         # checks is the position is in land
         if self.isPositionInLand(new_pos):
@@ -577,7 +569,7 @@ class House(object):
                     house.addVrijstand()
                     value_change += house.getHouseValue()[0] - house.getOldHouseValue()   
                 # if new value is higher, move house to new position  
-                if value_change > 0 or randomUpdate:
+                if value_change > 0 or (random.random() < math.e**(value_change/(100-temperature/100)) and temperature != 0.124632563):
                 # if new value is higher, move house to new position 
                     return value_change
                 # if randomUpdate is switched on, move even without
@@ -774,7 +766,7 @@ def hillClimber(land, variant, houses, current_value, gui_updates):
     Hill Climber algorithm
     """
     # Variables for HC
-    house_changes = 1000
+    house_changes = 10000
     k = 0
     monitoring_help = []
     stop_list = [current_value]
@@ -786,7 +778,7 @@ def hillClimber(land, variant, houses, current_value, gui_updates):
     # Update some random house. Stop if no significant value increase is seen
     for i in range(house_changes):
         house = random.choice(houses)
-        current_value += house.updatePosition()   
+        current_value += house.updatePosition()
         if i%200 == 0 and i > 1:
             k += 1
             stop_list.append(current_value)
@@ -794,7 +786,7 @@ def hillClimber(land, variant, houses, current_value, gui_updates):
                 print "Stopped at", i
                 break
 
-        # plot list and update the GUI
+    # plot list and update the GUI
         monitoring_help.append(current_value)
         if i%50 == 0 and gui_updates:
             anim.update((current_value, land.land))
@@ -810,77 +802,37 @@ def simulatedAnnealing(land, variant, houses, current_value, gui_updates):
     """
     # Initialise variables
     monitoring_help = []
-    k = 0
-    redraws = 5
-    total_updates = 2000
-    redraw = 0
-    goback = True
+    total_updates = 10000
 
     # Show GUI
     if gui_updates:
         anim = NewVisualisation(variant, 120, 160)
 
     # First maximization (HC)
-    for i in range(3000):
+    for i in range(total_updates):
         house = random.choice(houses)
-        current_value += house.updatePosition()
+        current_value += house.updatePosition(i)
         monitoring_help.append(current_value)
         if i%50 == 0 and gui_updates:
-            anim.update((current_value, land.land))
-    # Use the old land as reference, continue with new land
-    good_list = (current_value, land.land)
-
-    while redraw < redraws:
-        k += 1
-        # This is the current best land, make a copy to work on
-        if goback:
-            best_land, best_houses = createNewLand(land.land, variant)
-
-        # This section should set the currentvalue and vrijstand of the new land
-        current_value = 0
-        for house in best_houses:
-            house.addVrijstand()
-            current_value += house.getHouseValue()[0]
-
-        #print k, current_value
-        house = random.choice(best_houses)
-
-        # Allow negative increases half of the time, for half of the total updates
-        random_num = 0.0
-        if (k%total_updates < total_updates/2) and (random.random() < random.random()):
-            current_value += house.updatePosition(True)
-        else:
-            current_value += house.updatePosition()
-        monitoring_help.append(current_value)
-
-        # Vrijstanden arent reverting back... So we go to the old land with new vrijstand.
-        # Continues with land.land but houses are changing
-        if k%total_updates == 0:
-            print current_value
-            # Save if this is the best land, continue the simulation with this best land
-            if current_value > good_list[0]:
-                land = best_land
-                good_list = (current_value, land.land)
-                goback = False
-            # revert to old land by again creating a land which is the best land
-            else:
-                goback = True
-            redraw += 1
-            print redraw
-
-        if k%50 == 0 and redraw < redraws and gui_updates:
-            anim.update((current_value, best_land.land))
+        	anim.update((current_value, land.land))
 
     if gui_updates:
         anim.stop()
-    return good_list, monitoring_help
 
-    # We create a copy of the land we are going to work with.
+    return land, monitoring_help, current_value
+
+def geneticAlgorithm():
+    """
+    Create 10 randomizations
+    Choose the two with the most value
+    Merge together
+    """
+
 
 def simulation(algorithm_type, variant, gui_updates, randomizations):
     """
     Input:
-     None.
+    None.
     Return:
     List of total values of all trails and updates.
     Purpose:
@@ -916,7 +868,7 @@ def simulation(algorithm_type, variant, gui_updates, randomizations):
             # if position is good it is kept, otherwise enter loop
             good_loc = house.checkHousePosition(position)
             while good_loc == False:
-                # getting new positions until position is viable       
+            # getting new positions until position is viable       
                 position = land.getRandomPosition()
                 good_loc = house.checkHousePosition(position)
             # placing house on land  
@@ -936,26 +888,20 @@ def simulation(algorithm_type, variant, gui_updates, randomizations):
 
         # Simulated Annealing
         if algorithm_type == "SimulatedAnnealing":
-            good_list, monitoring_help = simulatedAnnealing(land, variant, houses, initial_value, gui_updates)
+            land, monitoring_help, total_value = simulatedAnnealing(land, variant, houses, initial_value, gui_updates)
 
-           # Hill Climber
+        # Hill Climber
         elif algorithm_type == "HillClimber":
             land, monitoring_help, total_value = hillClimber(land, variant, houses, initial_value, gui_updates)
 
-            # Check if the previous randomization is better
-            if total_value > good_list[0]:
-                good_list = (total_value, land.land)
-            print j+1, total_value
-
-        # Genetic algorithm
-        else:
-            pass
+        # Check if the previous randomization is better
+        if total_value > good_list[0]:
+            good_list = (total_value, land.land)
+        print j+1, total_value
 
         # Monitoring for the graphs
         monitoring.append(monitoring_help)
-        if algorithm_type == "SimulatedAnnealing":
-            break
-    # Visualise the result
+
     end = time.clock()
     print "The best solution is           :", "{:,}".format(good_list[0]*1000)
     print "Time elapsed: " +str(round(end - start,2)) +" seconds"
@@ -963,23 +909,24 @@ def simulation(algorithm_type, variant, gui_updates, randomizations):
 
     value_check = 0
     for key, house in good_list[1].iteritems(): 
+        print key, house.vrijstand
         value_check += house.getHouseValue()[0]
     print value_check
     return monitoring
 
 def test():
-    times = 0
-    reps = 20000000
-    for i in range(reps):
-        if random.random()< random.random():
-            times += 1
-    print times/float(reps)*100
+    reps = 1000
+    lest =[]
+    for i in range(1, reps):
+        lest.append(math.e**(random.randint(-20,20)/(math.log((i+2)))))
+    pylab.plot(range(len(lest)), lest)
+    pylab.show()
 
 
 if __name__ == "__main__":
-    gui_updates = True
+    gui_updates = False
     #random.seed(3)
-    randomizations = 1
+    randomizations = 3
     variant = 20
     algorithm1 = "HillClimber"
     algorithm2 = "SimulatedAnnealing"
