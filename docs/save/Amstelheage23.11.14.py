@@ -3,7 +3,6 @@
 
 import math
 import random
-import numpy as np
 from Tkinter import *
 import pylab
 import time
@@ -53,15 +52,6 @@ def rect_distance((x1, y1, x1b, y1b), (x2, y2, x2b, y2b)):
     elif top:
         return y1b - y2
 
-def vrijstandComparison(house1, house2):
-    
-    if house1.spec == house2.spec:
-        return house1.spec[2]
-    elif house2.spec[2] > house1.spec[2]:
-        return math.sqrt((house2.spec[0]/2)**2 + (house2.spec[1]/2)**2) - math.sqrt((house1.spec[0]/2)**2 + (house1.spec[1]/2)**2) + house2.spec[2]
-    else:
-        return math.sqrt((house1.spec[0]/2)**2 + (house1.spec[1]/2)**2) - math.sqrt((house2.spec[0]/2)**2 + (house2.spec[1]/2)**2) + house1.spec[2]
-
 
 class Position(object):
     """
@@ -90,10 +80,10 @@ class Position(object):
         move to 8 possible locations.              
         """
         old_x, old_y = self.getX(), self.getY()
-        new_x, new_y = old_x, old_y
-        while new_x ==  old_x and new_y == old_y:
-            new_x = old_x + random.sample((-distance_change, 0, distance_change),1)[0]
-            new_y = old_y + random.sample((-distance_change, 0, distance_change),1)[0]
+        new_x, new_y = 0, 0
+        while new_x ==  0 and new_y == 0:
+            new_x = old_x + random.sample((-distance_change,0, distance_change),1)[0]
+            new_y = old_y + random.sample((-distance_change,0, distance_change),1)[0]
         
         return Position(new_x, new_y)
 
@@ -107,56 +97,8 @@ class Land(object):
         self.width = width
         self.depth = depth
         self.land = {}
-        self.myArray = [[ False for j in range(120)] for i in range(160)]
-
-    def initialiseGrid(self):
-        """
-        
-        """
-        for key, house in self.land.iteritems():
-            corners = house.getEdges()
-            for horizontal in range(int(round(corners[0][0])), int(round(corners[2][0]))):
-                for vertical in range(int(round(corners[0][1])), int(round(corners[2][1]))):
-                    self.myArray[vertical][horizontal] = (True, key)
-
-    def updateGrid(self, house, old_pos):
-        self.myArray = [[ False for j in range(120)] for i in range(160)]
-        for key, house in self.land.iteritems():
-            corners = house.getEdges()
-            for horizontal in range(int(round(corners[0][0])), int(round(corners[2][0]))):
-                for vertical in range(int(round(corners[0][1])), int(round(corners[2][1]))):
-                    self.myArray[vertical][horizontal] = (True, key)
-        """
-        corners = house.old_corners
-        for horizontal in range(int(round(corners[0][0])), int(round(corners[2][0]))):
-                for vertical in range(int(round(corners[0][1])), int(round(corners[2][1]))):
-                    self.myArray[vertical][horizontal] = False
-        corners = house.getEdges()
-        for horizontal in range(int(round(corners[0][0])), int(round(corners[2][0]))):
-                for vertical in range(int(round(corners[0][1])), int(round(corners[2][1]))):
-                    self.myArray[vertical][horizontal] = (True, house.name)
-        """
   
-    def candidates(self, house, extension):
-        left_top, right_top, right_bottom, left_bottom =  house.getEdges()
-        candidates = []
-        #print left_top, right_bottom
-        #print range(max(int(round(left_top[0]))-extension,0), min(int(round(right_bottom[0]))+extension+1, self.width))
-        for horizontal in range(max(int(round(left_top[0]))-extension,0), min(int(round(right_bottom[0]))+extension, self.width)):
-            #print horizontal
-            for vertical in range(max(int(round(left_top[1]))-extension,0), min(int(round(right_bottom[1]))+extension, self.depth)):
-                #print self.myArray[vertical][horizontal]
-                if self.myArray[vertical][horizontal] != False and self.myArray[vertical][horizontal] != (True, house.name):
-                    candidates.append(self.myArray[vertical][horizontal][1])
-        keys = {}
-        for e in candidates:
-            keys[e] = 1
-        #print house.name, keys.keys()
-        return keys.keys()
-
-    def printit(self):
-        testvis(self.myArray)
-
+  
     def getWidth(self):
         return self.width
   
@@ -174,7 +116,7 @@ class Land(object):
         Purpose:
         Appends the location to the list of locations where the land is occupied.
         """
-        name = house.name
+        name = house.getHouseName()
         self.land[name] = house
         return 0 
 
@@ -188,7 +130,7 @@ class Land(object):
         Purpose:
         Removes the location from the list.  
         """
-        name = house.name
+        name = house.getHouseName()
         del self.land[name]
         return 0
 
@@ -232,8 +174,9 @@ class Land(object):
         # computing minimum distance between houses 
         return rect_distance((edges1[3][0],edges1[3][1],edges1[1][0],edges1[1][1])
                             ,(edges2[3][0],edges2[3][1],edges2[1][0],edges2[1][1]))
-
-    def getVrijstandOld(self, checkHouse):
+     
+     
+    def getVrijstand(self, checkHouse):
         """
         Input:
         Location is a position object.
@@ -243,16 +186,16 @@ class Land(object):
         Purpose:
         Computing the bonus vrijstand of a given house (== location, specification).
         """
-        wall = False
+        wall = True
         # makes a "checkhouse" based on locations and specifications
         # checkHouse = House(self, specifications[0], specifications[1], 0, 0, specifications[2], location)
         # minimum distance for this type of house
-        minimum_distance = checkHouse.spec[2]
+        minimum_distance = checkHouse.getHouseSpecs()[2]
         all_distances = []
         # first value is bonus vrijstand if checkhouse would be the only house in the land
         all_distances.append(checkHouse.getMaxBorderDistance() - minimum_distance)
   
-        neighbors = []
+        neighbors = checkHouse.getHouseNeighbor()
    
         if len(neighbors) > 0:
             house_names = neighbors  
@@ -275,7 +218,7 @@ class Land(object):
                 all_distances.append(distance-minimum_distance)
                 # save the name of the nearest house
                 if distance < max(neighbor_distance):
-                    neighbor_name.append(house.name)
+                    neighbor_name.append(house.getHouseName())
                     neighbor_distance.append(distance)
 
                     if len(neighbor_distance) > 19:
@@ -289,50 +232,7 @@ class Land(object):
                                 math.fabs(checkHouse.location.getY()+0.5*checkHouse.spec[1]+checkHouse.spec[2]-self.depth),
                                 math.fabs(checkHouse.location.getY()-0.5*checkHouse.spec[1]-checkHouse.spec[2]))
             all_distances.append(distance_wall)
-        return min(all_distances)
-     
-     
-    def getVrijstand(self, checkHouse):
-        """
-        Input:
-        Location is a position object.
-        Specifications is a list with three values: [width, depth, min_dist]
-        Return:
-        Bonus vrijstand as a float and neighbor name as a string together in a tuple
-        Purpose:
-        Computing the bonus vrijstand of a given house (== location, specification).
-        """
-        wall = True 
-        # makes a "checkhouse" based on locations and specifications
-        # checkHouse = House(self, specifications[0], specifications[1], 0, 0, specifications[2], location)
-        # minimum distance for this type of house
-        minimum_distance = checkHouse.spec[2]
-        all_distances = []
-        # first value is bonus vrijstand if checkhouse would be the only house in the land
-        #all_distances.append(checkHouse.getMaxBorderDistance() - minimum_distance)
-        
-        # Set initial stuff
-        smallest_distance = 200
-        neighbor = None
-        for key, house in self.land.iteritems():
-            if key == checkHouse.name:
-                pass
-            else:
-                distance = self.getMinDistance(checkHouse,house) - minimum_distance
-                if distance < smallest_distance:
-                    smallest_distance = distance
-                    name_neighbor = key
-
-        if wall:
-            distance_wall = min(math.fabs(checkHouse.location.getX()+0.5*checkHouse.spec[0]+checkHouse.spec[2]-self.width),
-                                math.fabs(checkHouse.location.getX()-0.5*checkHouse.spec[0]-checkHouse.spec[2]),
-                                math.fabs(checkHouse.location.getY()+0.5*checkHouse.spec[1]+checkHouse.spec[2]-self.depth),
-                                math.fabs(checkHouse.location.getY()-0.5*checkHouse.spec[1]-checkHouse.spec[2]))
-            if distance_wall < smallest_distance:
-                smallest_distance = distance_wall
-                name_neighbor = name_neighbor
-        checkHouse.neighbor = (name_neighbor, smallest_distance)
-        return smallest_distance
+        return (min(all_distances), neighbor_name)
 
 
     def getTotalVrijstand(self):
@@ -348,7 +248,7 @@ class Land(object):
         vrijstand = 0
         # loops trough all houses and adds vijstand
         for key,house in self.land.iteritems():
-            vrijstand += house.vrijstand()
+            vrijstand += house.getHouseVrijstand()
         # prints total vrijstand
         print "Total vrijstand is          :", vrijstand
         return vrijstand 
@@ -400,6 +300,7 @@ class Land(object):
 class House(object):
     """
     Represents a house located on the field.
+
     House object must be located within the areas of the field at all times
     Probably needs some method to move the house to a different location and
     subsequently re-evaluate the score.
@@ -418,7 +319,6 @@ class House(object):
         self.total_val = total_val  
         self.old_val = old_val
         self.spec = [self.width, self.depth, self.min_dist]
-        self.corners = None
 
 
     def setHousePosition(self,position):
@@ -469,6 +369,30 @@ class House(object):
         Adding a name to a house. Name is in format "x_position-y_position".
         """
         self.name = name
+        return 0
+  
+    def getHouseName(self):
+        """
+        Input:
+        None.
+        Return:
+        Name of house.
+        Purpose:
+        Returning the name of the house.
+        """
+        return self.name
+  
+  
+    def getHouseNeighbor(self):
+        """
+        Input:
+        None.
+        Return:
+        Name of neighbor house.
+        Purpose:
+        Returning the name of the house with the minimum distance to this house.
+        """
+        return self.neighbor
   
   
     def addVrijstand(self):
@@ -480,7 +404,23 @@ class House(object):
         Purpose:
         Adding bonus vrijstand and name of neighbor to house.
         """
-        self.vrijstand = self.land.getVrijstand(self)
+        # Create a random location
+        self.vrijstand = self.land.getVrijstand(self)[0]
+        self.neighbor = self.land.getVrijstand(self)[1]
+        return 0
+
+
+    def getHouseVrijstand(self):
+        """
+        Input:
+        None.
+        Return:
+        Returning vijstand of given house as tuple. The first part is the 
+        actual vijstand as float and the second element the name of the neighbor. 
+        Purpose:
+        Getting vijstand of house and name of neighbor.
+        """
+        return self.vrijstand
 
 
     def checkHousePosition(self, position):
@@ -496,10 +436,22 @@ class House(object):
         # checks if position is on land
         if self.isPositionInLand(position):
             # checks if the position is vaible.
-            if self.land.checkPosition(position, self.spec):
+            if self.land.checkPosition(position, self.getHouseSpecs()):
                 return True
         # return False is the location is not viable
         return False
+  
+  
+    def getHouseSpecs(self):
+        """
+        Input:
+        None.
+        Return:
+        Returning the specifications of the house, [width, depth, min_dist]. 
+        Purpose:
+        Getting the specifications of a given house.
+        """
+        return self.spec
   
   
     def getMaxBorderDistance(self):
@@ -539,7 +491,8 @@ class House(object):
         Calculation the value of the house.
         """     
         self.old_val = self.total_val     
-        self.total_val = self.value * (1 + self.vrijstand * self.bonus)
+        vrijstand = self.vrijstand
+        self.total_val = self.value * (1 + vrijstand * self.bonus)
         return (self.total_val, self.value)
 
     def getOldHouseValue(self):
@@ -552,7 +505,6 @@ class House(object):
         Returning the location of the center of the house.
         """ 
         return self.old_val
-        
   
     def getHousePosition(self):
         """
@@ -575,19 +527,16 @@ class House(object):
         Purpose:
         Getting all edges of a house.
         """ 
-        self.old_corners = self.corners
         x_val = self.location.getX()
         y_val = self.location.getY()
 
         left_bottom = (x_val - (self.width/2), y_val + (self.depth/2))
         right_bottom = (x_val + (self.width/2), y_val + (self.depth/2))
         left_top = (x_val - (self.width/2), y_val - (self.depth/2))
-        right_top = (x_val + (self.width/2), y_val - (self.depth/2))
-        self.corners = (left_top,right_top,right_bottom,left_bottom)   
+        right_top = (x_val + (self.width/2), y_val - (self.depth/2))   
         return (left_top,right_top,right_bottom,left_bottom)
 
-
-    def updatePosition(self, temperature = 0.124632563, max_temperature = 100):
+    def updatePosition(self, temperature = 0.124632563, randomUpdate = False):
         """
         Input:
         RandomUpdate boolian, if set to true, house gets new position
@@ -601,88 +550,37 @@ class House(object):
         """ 
         # saving old position
         old_pos = self.location
+        #old_value = self.getHouseValue()[0]
         # removing old position from land
         self.land.removeLandAtPosition(self)
         # create a new position
-        if temperature == 0.124632563:
-            self.location = self.location.getNewPosition(random.uniform(1,2))
-        else:
-            self.location = self.location.getNewPosition(5.5-temperature/(max_temperature/5))
+        self.location = self.location.getNewPosition(5.5-temperature/2000)
         new_pos = self.location
         # checks is the position is in land
         if self.isPositionInLand(new_pos):
             # checks if all minimum distances are met  
             if self.land.checkPosition(new_pos, self.spec):
-                # Check the houses that used to be the closest house to checkhouse 
-                # addvrijstand just edits the vrijstand
-                # Old values
+                #self.location = new_pos
                 self.land.markLandAtPosition(self)
-                old_vrijstand = self.vrijstand
-                old_total_value = self.total_val
-                old_neighbor = self.neighbor
-                old_additional = {}
-                old_candidates = {}
-
-                # Remove location from old grid
-
-                additional = [self.neighbor[0]]
-                # Look for houses which have the checkhouse as closest neighbor
-                for key, house in self.land.land.iteritems():
-                    # Check if house has checkhouse as neighbor and house is not the neighbor
-                    if key != additional[0] and house.neighbor[0] == self.name:
-                        additional.append(key)
-
                 self.addVrijstand()
-                value_change = self.getHouseValue()[0]- self.getOldHouseValue()
-
-
-                for house_name in additional:
-                    house = self.land.getHouses()[house_name]
-                    old_additional[house_name] = (house.vrijstand, house.total_val, house.neighbor)
+                value_change = self.getHouseValue()[0] - self.getOldHouseValue()
+                for neighbor in self.getHouseNeighbor():
+                    house = self.land.getHouses()[neighbor]
                     house.addVrijstand()
-                    value_change += house.getHouseValue()[0]- house.getOldHouseValue()
-
-                # Recheck all th eother houses
-                other_houses_list = []
-                for key, house in self.land.land.iteritems():
-                    # Already updates houses
-                    if key in additional or key == self.name:
-                        pass
-                    else:
-                        # Save values, compute distance to moved house
-                        new_distance = self.land.getMinDistance(house,self) - house.spec[2]
-                        # If this value is smaller, house has a new neighbor
-                        if new_distance < house.neighbor[1]:
-                            # Save old values
-                            other_houses_list.append([house, house.vrijstand, house.total_val, house.neighbor])
-                            # Edit new stuff
-                            house.neighbor = (self.name, new_distance)
-                            house.vrijstand = new_distance
-                            value_change += house.getHouseValue()[0] - house.getOldHouseValue()
-                #print value_change
-                if value_change > 0 or (random.random() < math.e**(value_change/(100-temperature/(max_temperature/100))) and temperature != 0.124632563):
+                    value_change += house.getHouseValue()[0] - house.getOldHouseValue()   
+                # if new value is higher, move house to new position  
+                if value_change > 0 or (random.random() < math.e**(value_change/(100-temperature/100)) and temperature != 0.124632563):
+                # if new value is higher, move house to new position 
                     return value_change
-                    #return vrijstand_change
                 # if randomUpdate is switched on, move even without
                 # value increase
                 else:
-                    # MOVE NEIGHBORS BACK...
                     self.land.removeLandAtPosition(self)
                     self.location = old_pos
-                    self.land.updateGrid(self, new_pos)
                     self.land.markLandAtPosition(self)
-                    self.vrijstand = old_vrijstand
-                    self.total_val = old_total_value
-                    self.neighbor = old_neighbor
-                    for house_name in additional:
-                        house = self.land.getHouses()[house_name]
-                        house.vrijstand = old_additional[house_name][0]
-                        house.total_val = old_additional[house_name][1]
-                        house.neighbor = old_additional[house_name][2]
-                    for house_data in other_houses_list:
-                        house_data[0].vrijstand = house_data[1]
-                        house_data[0].total_val = house_data[2]
-                        house_data[0].neighbor = house_data[3]
+                    # update all neighbors with old vrijstand
+                    # getTotalValue loops trough all houses and updates vrijstand and value    
+                    self.land.getTotalValue()
                     return 0
         # if no one of the location criterea failed, move to old position
         self.location = old_pos
@@ -721,14 +619,14 @@ class NewVisualisation(object):
         """
         scaling = 40
         for keys, coordinates in inputs[1].iteritems():  
-            if coordinates.spec == [8.0, 8.0, 2.0]:
+            if coordinates.getHouseSpecs() == [8.0, 8.0, 2.0]:
                 self.w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-4)*4, 
                                    scaling+(coordinates.getHousePosition().getY()-4)*4, 
                                    scaling+(coordinates.getHousePosition().getX()+4)*4, 
                                    scaling+(coordinates.getHousePosition().getY()+4)*4, fill ="Blue")
                 self.w.create_text(scaling+(coordinates.getHousePosition().getX())*4,
                              scaling+(coordinates.getHousePosition().getY())*4, text = keys)
-            elif coordinates.spec == [10.0, 7.5, 3.0]:
+            elif coordinates.getHouseSpecs() == [10.0, 7.5, 3.0]:
                 self.w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-5)*4, 
                                    scaling+(coordinates.getHousePosition().getY()-3.75)*4, 
                                    scaling+(coordinates.getHousePosition().getX()+5)*4, 
@@ -799,14 +697,14 @@ def Visualisation(inputs):
     # Plot the houses. NOTE, because the scaling is 40 pixels for 10 meters, 
     # it is 4 pixels for 1 meter
     for keys, coordinates in inputs[1].iteritems():  
-        if coordinates.spec == [8.0, 8.0, 2.0]:
+        if coordinates.getHouseSpecs() == [8.0, 8.0, 2.0]:
             w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-4)*4, 
                                scaling+(coordinates.getHousePosition().getY()-4)*4, 
                                scaling+(coordinates.getHousePosition().getX()+4)*4, 
                                scaling+(coordinates.getHousePosition().getY()+4)*4, fill ="Blue")
             w.create_text(scaling+(coordinates.getHousePosition().getX())*4,
                              scaling+(coordinates.getHousePosition().getY())*4, text = keys)
-        elif coordinates.spec == [10.0, 7.5, 3.0]:
+        elif coordinates.getHouseSpecs() == [10.0, 7.5, 3.0]:
             w.create_rectangle(scaling+(coordinates.getHousePosition().getX()-5)*4, 
                                scaling+(coordinates.getHousePosition().getY()-3.75)*4, 
                                scaling+(coordinates.getHousePosition().getX()+5)*4, 
@@ -839,12 +737,36 @@ def performancePlots(monitoring):
     pylab.title("Performance Plots")
     pylab.show()
     
+def createNewLand(land_dict, variant):
+    old_houses = []
+    old_land = Land(variant, 120, 160)
+    for key, house in land_dict.iteritems():
+        # House name and locations
+        #old_houses.append((key, house.position.getX(), house.position.getY()))
+        if int(key[1:]) <= 3:
+            old_houses.append((key, House(old_land, 11.0, 10.5, 610.0, 0.06, 6.0, None), 
+                                (house.location.getX(), house.location.getY())))
+        elif 4 <= int(key[1:]) <= 8:
+            old_houses.append((key, House(old_land, 10.0, 7.5, 399.0, 0.04, 3.0, None), 
+                                (house.location.getX(), house.location.getY())))
+        else:
+            old_houses.append((key, House(old_land, 8.0, 8.0, 285.0, 0.03, 2.0, None), 
+                                (house.location.getX(), house.location.getY())))
+    # Put houses on land
+    old_house = []
+    for house_specs in old_houses:
+        position = Position(house_specs[2][0], house_specs[2][1])
+        house_specs[1].addHouseName(house_specs[0])
+        house_specs[1].setHousePosition(position)
+        old_house.append(house_specs[1])
+    return old_land, old_house
 
-def hillClimber(land, variant, houses, current_value, gui_updates, house_changes = 10000):
+def hillClimber(land, variant, houses, current_value, gui_updates):
     """
     Hill Climber algorithm
     """
     # Variables for HC
+    house_changes = 10000
     k = 0
     monitoring_help = []
     stop_list = [current_value]
@@ -856,11 +778,8 @@ def hillClimber(land, variant, houses, current_value, gui_updates, house_changes
     # Update some random house. Stop if no significant value increase is seen
     for i in range(house_changes):
         house = random.choice(houses)
-        #print current_value
         current_value += house.updatePosition()
-        monitoring_help.append(current_value)
-            #land.printit()
-        if i%300 == 0 and i > 1:
+        if i%200 == 0 and i > 1:
             k += 1
             stop_list.append(current_value)
             if 100*(stop_list[k]/stop_list[k-1]-1) < 0.1:
@@ -868,20 +787,22 @@ def hillClimber(land, variant, houses, current_value, gui_updates, house_changes
                 break
 
     # plot list and update the GUI
+        monitoring_help.append(current_value)
         if i%50 == 0 and gui_updates:
             anim.update((current_value, land.land))
 
     if gui_updates:
         anim.stop()
-    #land.printit()
     return land, monitoring_help, current_value
 
-def simulatedAnnealing(land, variant, houses, current_value, gui_updates, total_updates = 10000):
+def simulatedAnnealing(land, variant, houses, current_value, gui_updates):
     """
     SA algorithm
+    DOES NOT WORK AT ALL...
     """
     # Initialise variables
     monitoring_help = []
+    total_updates = 10000
 
     # Show GUI
     if gui_updates:
@@ -890,120 +811,23 @@ def simulatedAnnealing(land, variant, houses, current_value, gui_updates, total_
     # First maximization (HC)
     for i in range(total_updates):
         house = random.choice(houses)
-        current_value += house.updatePosition(i, total_updates)
+        current_value += house.updatePosition(i)
         monitoring_help.append(current_value)
-        if i%200 == 0 and gui_updates:
-            anim.update((current_value, land.land))
+        if i%50 == 0 and gui_updates:
+        	anim.update((current_value, land.land))
 
     if gui_updates:
         anim.stop()
 
     return land, monitoring_help, current_value
 
-def geneticAlgorithm(population, gui_updates, generations = 25):
+def geneticAlgorithm():
     """
     Create 10 randomizations
     Choose the two with the most value
     Merge together
     """
-    
-    for generation in range(generations):    
-        #evaluation
-        population = sorted(population,key=lambda x: x[1], reverse=True)
-        #population.reverse()
-        population = population[:100]
-        
-        print "GENERATION: ", generation
-        #mutation
-        population_new = []
-        for i in range(100):
-            parent = random.choice(population)
-            child = createNewLand(parent[0].land, 20)
-            if i < 10:         
-                hill_child = hillClimber(child[0], 20, child[1], child[0].getTotalValue(), gui_updates, 100)
-                population_new.append((hill_child[0], hill_child[2], hill_child[0].getHouses()))
-                print "HillClimber Total Value", hill_child[2]
-            if i > 9 and i < 20:
-                sa_child = simulatedAnnealing(child[0], 20, child[1], child[0].getTotalValue(), gui_updates, 500)
-                population_new.append((sa_child[0], sa_child[2], sa_child[0].getHouses()))
-                print "SA Total Value", sa_child[2]
-            if i > 19 and i < 100:
-                #maison_list = [child[0].land['h1'].vrijstand,child[0].land['h2'].vrijstand,child[0].land['h3'].vrijstand]
-                #child1 = child[0].land['h'+ str(maison_list.index(min(maison_list))+1)]
-                child1 = child[0].land[random.choice(child[0].land.keys())]
-                old_value = child[0].getTotalValue()
-                position_maison = child1.getHousePosition()
-                child[0].removeLandAtPosition(child1)
-                #small_list = []
-                #for nr in range(12,21):
-                #   small_list.append(child[0].land["h" + str(nr)].vrijstand)
-                checkvrijstand = 0
-                small_in_land = True
-                big_in_land = True
-                child2 = child[0].land[random.choice(child[0].land.keys())]
-                while vrijstandComparison(child1, child2) > checkvrijstand  or big_in_land or small_in_land:
-                    child2 = child[0].land[random.choice(child[0].land.keys())]
-#                    while child2.spec[2] == child1.spec[2]:                
-#                        child2 = child[0].land[random.choice(child[0].land.keys())]
-                    
-                    
-                    if child1.spec[2] > child2.spec[2]:  
-                        checkvrijstand = child2.vrijstand + child2.min_dist
-                    else:
-                        checkvrijstand = child1.vrijstand + child1.min_dist
-                    position_small = child2.getHousePosition()
-                    big_in_land = not child1.isPositionInLand(position_small)
-                    small_in_land = not child2.isPositionInLand(position_maison)
-                    
-                #child2 = child[0].land['h'+ str(small_list.index(max(small_list))+12)]
-                
-                child[0].removeLandAtPosition(child2)         
-                
-                child1.setHousePosition(position_small)
-                child2.setHousePosition(position_maison)
-                total_value = child[0].getTotalValue()
-                population_new.append((child[0], total_value, child[0].getHouses()))
-                print "House exchange total value", total_value
-                print "House exchange difference value", total_value - old_value
-        population += population_new
-    
 
-    
-    population = sorted(population,key=lambda x: x[1], reverse=True)
-    #population.reverse()
-    for land in population:
-        print "land values:", land[1]
-    print population[0]
-    print population[-1]
-    return population[0]
-    
-def createNewLand(land_dict, variant):
-    old_houses = []
-    old_land = Land(variant, 120, 160)
-    for key, house in land_dict.iteritems():
-        # House name and locations
-        #old_houses.append((key, house.position.getX(), house.position.getY()))
-        if int(key[1:]) <= 3:
-            old_houses.append((key, House(old_land, 11.0, 10.5, 610.0, 0.06, 6.0, key), 
-                                (house.location.getX(), house.location.getY()), house.neighbor, house.total_val, house.vrijstand))
-        elif 4 <= int(key[1:]) <= 8:
-            old_houses.append((key, House(old_land, 10.0, 7.5, 399.0, 0.04, 3.0, key), 
-                                (house.location.getX(), house.location.getY()), house.neighbor, house.total_val, house.vrijstand))
-        else:
-            old_houses.append((key, House(old_land, 8.0, 8.0, 285.0, 0.03, 2.0, key), 
-                                (house.location.getX(), house.location.getY()), house.neighbor, house.total_val, house.vrijstand))
-        
-            # Put houses on land
-    old_house = []
-    for house_specs in old_houses:
-        position = Position(house_specs[2][0], house_specs[2][1])
-        house_specs[1].addHouseName(house_specs[0])
-        house_specs[1].setHousePosition(position)
-        house_specs[1].neighbor = house_specs[3]
-        house_specs[1].total_val = house_specs[4]
-        house_specs[1].vrijstand = house_specs[5]
-        old_house.append(house_specs[1])
-    return old_land, old_house
 
 def simulation(algorithm_type, variant, gui_updates, randomizations):
     """
@@ -1014,12 +838,7 @@ def simulation(algorithm_type, variant, gui_updates, randomizations):
     Purpose:
     I'm going to try and randomize the houses and check if the algorithm we have works
     """
-    # Initialise variablesa
-
-    if algorithm_type == "GeneticAlgorithm":
-        population = []
-        randomizations = 200
-    
+    # Initialise variables
     monitoring = []
     good_list = (0, None)
     start = time.clock()  
@@ -1045,91 +864,78 @@ def simulation(algorithm_type, variant, gui_updates, randomizations):
         # more expensive houses are set first
         for house in reversed(houses):
             # get random position on land for house
-            #if m < 10:
-             #   position = [Position(12,12),Position(60,12),Position(108,12),Position(36,24) ,
-             #               Position(84,24),Position(12,40),Position(60,40),Position(108,40),Position(36,52)][m-1]
-            #else:
-            position = land.getRandomPosition()
+            if False:
+                position = ("",Position(108,12),Position(12,12),Position(108,148))[m]
+                
+            #elif m > 3 and m < 9:
+            #    position = (Position(12,148),Position(32,148),Position(52,148),Position(72,148),Position(92,148))[m-4]
+            else:
+                #position = Position(12,148)
+                position = land.getRandomPosition()
             # if position is good it is kept, otherwise enter loop
+            dist = 0.5
             good_loc = house.checkHousePosition(position)
             while good_loc == False:
-            # getting new positions until position is viable       
+            # getting new positions until position is viable  
+                #position = position.getNewPosition(dist)
                 position = land.getRandomPosition()
                 good_loc = house.checkHousePosition(position)
+                dist += 0.5
             # placing house on land  
             name = "h" + str(m)
             house.addHouseName(name)
             house.setHousePosition(position)
             m +=1
             #print m
+
         initial_value = 0
         for house in houses:
-            house.addVrijstand() 
+            house.addVrijstand()
+            # computing value of each house
             initial_value += house.getHouseValue()[0]
-
+            # adding their vijstand and neighbors to houses
         monitoring_help.append(initial_value)
-        
-        if algorithm_type == "GeneticAlgorithm":
-            population.append((land, initial_value, houses))
-            continue
 
-        
         # Simulated Annealing
         if algorithm_type == "SimulatedAnnealing":
-            #land, monitoring_help, total_value = simulatedAnnealing(land, variant, houses, initial_value, gui_updates)
             land, monitoring_help, total_value = simulatedAnnealing(land, variant, houses, initial_value, gui_updates)
 
         # Hill Climber
         elif algorithm_type == "HillClimber":
-            #land, monitoring_help, total_value = hillClimber(land, variant, houses, initial_value, gui_updates)
             land, monitoring_help, total_value = hillClimber(land, variant, houses, initial_value, gui_updates)
-        
 
         # Check if the previous randomization is better
         if total_value > good_list[0]:
-            good_list = (total_value, land.land, land)
+            good_list = (total_value, land.land)
         print j+1, total_value
 
         # Monitoring for the graphs
         monitoring.append(monitoring_help)
-    
-    
-    if algorithm_type == "GeneticAlgorithm":
-        land, total_value, houses = geneticAlgorithm(population, gui_updates)
-        good_list = (total_value, land.land, land)
+
     end = time.clock()
     print "The best solution is           :", "{:,}".format(good_list[0]*1000)
     print "Time elapsed: " +str(round(end - start,2)) +" seconds"
     Visualisation(good_list)
 
     value_check = 0
-    for key, house in good_list[1].iteritems():
-        print "House, (neighbor, vrijstand), vrijstandOldMethod:   ", key, house.neighbor, round(house.vrijstand,2), round(good_list[2].getVrijstandOld(house),2)
-    for key, house in good_list[1].iteritems():
+    for key, house in good_list[1].iteritems(): 
+        print key, house.vrijstand
         value_check += house.getHouseValue()[0]
     print value_check
     return monitoring
 
-def testvis(info):
-    master = Tk()
-    master.title("Amstelheage")
-    scaling = 40
-    w = Canvas(master, width=800, height=1000)
-    for i, row in enumerate(info):
-        for j, element in enumerate(row):
-            if element == False:
-                w.create_rectangle(scaling+j*4, scaling+i*4, 
-                                   scaling+ (j+1)*4 ,scaling+(i+1)*4, fill='blue')
-            else:
-                w.create_rectangle(scaling+j*4, scaling+i*4, 
-                                   scaling+ (j+1)*4 ,scaling+(i+1)*4, fill='red')
-    w.pack()
-    master.mainloop()
+def test():
+    reps = 1000
+    lest =[]
+    for i in range(1, reps):
+        lest.append(math.e**(random.randint(-20,20)/(math.log((i+2)))))
+    pylab.plot(range(len(lest)), lest)
+    pylab.show()
 
 
 if __name__ == "__main__":
     gui_updates = True
-    #random.seed(212)
+    #random.seed(3)
     randomizations = 1
     variant = 20
     algorithm1 = "HillClimber"
