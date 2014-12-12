@@ -878,7 +878,7 @@ def createHouses(house, recomb_land):
                          house.location.x, house.location.y))
     return recomb_houses
 
-def geneticAlgorithm(variant, population, gui_updates, generations = 2000):
+def geneticAlgorithm(variant, population, gui_updates, generations = 2000, survival = True):
     """
     Create 10 randomizations
     Choose the two with the most value
@@ -906,7 +906,18 @@ def geneticAlgorithm(variant, population, gui_updates, generations = 2000):
         print "Population:", len(no_dup)
         population = no_dup
         population = sorted(population,key=lambda x: x[1], reverse=True)
-        population = population[:100]
+
+        if survival:
+            decrease_survival_rate = 0.6/(len(population)-5)
+            survival_rate = 0.7
+            new_pop = population[:5]
+            for pop in population[5:]:
+                if random.random() > survival_rate:
+                    new_pop.append(pop)
+                    survival_rate -= decrease_survival_rate
+            population = new_pop
+        else:
+            population = population[:100]
         print generation+1, population[0][1], population[-1][1]
         if gui_updates_genetic:
             anim.update((0, population[0][0].land))
@@ -914,9 +925,9 @@ def geneticAlgorithm(variant, population, gui_updates, generations = 2000):
         #mutation
         population_new = []
         population_sa = []
-        for i in range(10):
+        for i in range(20):
             parent = random.choice(population)
-            if i < 5:
+            if i < 15:
                 parent2 = random.choice(population)
                 child = createNewLand(parent[0].land, variant)
                 recomb_houses = []
@@ -1038,7 +1049,7 @@ def geneticAlgorithm(variant, population, gui_updates, generations = 2000):
                         population_new.append((recomb_land, total_value, recomb_land.getHouses()))
             else:   
                 child = createNewLand(parent[0].land, variant)
-                hill_child = hillClimber(child[0], variant, child[1], child[0].getTotalValue(), gui_updates, False, 20)
+                hill_child = hillClimber(child[0], variant, child[1], child[0].getTotalValue(), gui_updates, False, 10)
                 population_new.append((hill_child[0], hill_child[2], hill_child[0].getHouses()))
 
                     #population_new.append((child[0], total_value, child[0].getHouses()))
@@ -1095,7 +1106,7 @@ def simulation(algorithm_type, variant, gui_updates, randomizations, vrijstand_t
 
     if algorithm_type == "GeneticAlgorithm":
         population = []
-        randomizations = 50
+        randomizations = 100
     
     monitoring = []
     end_list = []
@@ -1200,17 +1211,17 @@ def simulation(algorithm_type, variant, gui_updates, randomizations, vrijstand_t
 
 
 
-    #print "The best solution is           :", "{:,}".format(good_list[0]*1000)
-    #print "Time elapsed: " +str(round(end - start,2)) +" seconds"
-    #print "MEAN OF THE HILLCLIMBER", np.mean(mean_list)
+    print "The best solution is           :", "{:,}".format(good_list[0]*1000)
+    print "Time elapsed: " +str(round(end - start,2)) +" seconds"
+    print "MEAN OF THE HILLCLIMBER", np.mean(mean_list)
     value_check = 0
     for key, house in good_list[1].iteritems():
         pass
-        #print "House, (neighbor, vrijstand), vrijstandOldMethod:   ", key, house.neighbor, round(house.vrijstand,2), round(good_list[2].getVrijstandOld(house),2)
+        print "House, (neighbor, vrijstand), vrijstandOldMethod:   ", key, house.neighbor, round(house.vrijstand,2), round(good_list[2].getVrijstandOld(house),2)
     for key, house in good_list[1].iteritems():
         value_check += house.getHouseValue()[0]
-    #print value_check
-    #Visualisation(good_list)
+    print value_check
+    Visualisation(good_list)
     #print "Standard error: ", np.std(end_list)
     monitoring.append(good_list[3])
     monitoring.append(bad_list[3])
@@ -1238,9 +1249,9 @@ if __name__ == "__main__":
     advanced = False
     vrijstand_type = False
     gui_updates = False
-    output = False
+    output = True
     best_list = [0, None]
-    """
+    
     random.seed(88629)
     randomizations = 1
     variant = 20
@@ -1248,7 +1259,7 @@ if __name__ == "__main__":
     algorithm2 = "SimulatedAnnealing"
     algorithm3 = "GeneticAlgorithm"
     algorithm4 = "Nothing"
-    use_algorithm = algorithm2
+    use_algorithm = algorithm3
     monitoring = simulation(use_algorithm, variant, gui_updates, randomizations, vrijstand_type, advanced)
     """
     for i in range(50):
@@ -1265,10 +1276,10 @@ if __name__ == "__main__":
         if monitoring[0][-1] > best_list[0]:
             best_list = (monitoring[0][-1], k)
     print best_list
-
+    """
     
     
-    monitoring = simulation(use_algorithm, variant, gui_updates, randomizations, vrijstand_type, advanced)
+    #monitoring = simulation(use_algorithm, variant, gui_updates, randomizations, vrijstand_type, advanced)
     #performancePlots(monitoring)
     
     if output:
