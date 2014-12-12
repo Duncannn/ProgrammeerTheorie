@@ -1,5 +1,5 @@
 # Amstelheage programmeertheorie assignment
-# Jonathan, Duncan
+# Thomas, Jonathan, Duncan
 
 import math
 import random
@@ -107,59 +107,9 @@ class Land(object):
         self.width = width
         self.depth = depth
         self.land = {}
-        self.myArray = [[ False for j in range(120)] for i in range(160)]
-
-    def initialiseGrid(self):
-        """
-        
-        """
-        for key, house in self.land.iteritems():
-            corners = house.getEdges()
-            for horizontal in range(int(round(corners[0][0])), int(round(corners[2][0]))):
-                for vertical in range(int(round(corners[0][1])), int(round(corners[2][1]))):
-                    self.myArray[vertical][horizontal] = (True, key)
-
-    def updateGrid(self, house, old_pos):
-        self.myArray = [[ False for j in range(120)] for i in range(160)]
-        for key, house in self.land.iteritems():
-            corners = house.getEdges()
-            for horizontal in range(int(round(corners[0][0])), int(round(corners[2][0]))):
-                for vertical in range(int(round(corners[0][1])), int(round(corners[2][1]))):
-                    self.myArray[vertical][horizontal] = (True, key)
-        """
-        corners = house.old_corners
-        for horizontal in range(int(round(corners[0][0])), int(round(corners[2][0]))):
-                for vertical in range(int(round(corners[0][1])), int(round(corners[2][1]))):
-                    self.myArray[vertical][horizontal] = False
-        corners = house.getEdges()
-        for horizontal in range(int(round(corners[0][0])), int(round(corners[2][0]))):
-                for vertical in range(int(round(corners[0][1])), int(round(corners[2][1]))):
-                    self.myArray[vertical][horizontal] = (True, house.name)
-        """
-  
-    def candidates(self, house, extension):
-        left_top, right_top, right_bottom, left_bottom =  house.getEdges()
-        candidates = []
-        #print left_top, right_bottom
-        #print range(max(int(round(left_top[0]))-extension,0), min(int(round(right_bottom[0]))+extension+1, self.width))
-        for horizontal in range(max(int(round(left_top[0]))-extension,0), min(int(round(right_bottom[0]))+extension, self.width)):
-            #print horizontal
-            for vertical in range(max(int(round(left_top[1]))-extension,0), min(int(round(right_bottom[1]))+extension, self.depth)):
-                #print self.myArray[vertical][horizontal]
-                if self.myArray[vertical][horizontal] != False and self.myArray[vertical][horizontal] != (True, house.name):
-                    candidates.append(self.myArray[vertical][horizontal][1])
-        keys = {}
-        for e in candidates:
-            keys[e] = 1
-        #print house.name, keys.keys()
-        return keys.keys()
-
-    def printit(self):
-        testvis(self.myArray)
 
     def getWidth(self):
         return self.width
-  
   
     def getDepth(self):
         return self.depth
@@ -669,7 +619,11 @@ class House(object):
                             else:
                                 value_change += house.getHouseValue()[0] - house.getOldHouseValue()
                 #print value_change
-                if value_change > 0 or (random.random() < math.e**(value_change/(100-temperature/(float(max_temperature)/100))) and temperature != 0.124632563):
+                if temperature < max_temperature - 150:
+                    temp_func = math.e**(value_change/(100-temperature/(float(max_temperature)/100)))
+                else:
+                    temp_func = 0.0
+                if value_change > 0 or (random.random() < temp_func and temperature != 0.124632563):
                     return value_change
                     #return vrijstand_change
                 # if randomUpdate is switched on, move even without
@@ -908,17 +862,33 @@ def simulatedAnnealing(land, variant, houses, current_value, gui_updates, vrijst
 
     return land, monitoring_help, current_value
 
-def rounding(number, base = 1):
+def rounding(number, base = 2):
     return int(base * round(float(number)/base))
 
+def createHouses(house, recomb_land):
+    recomb_houses = []
+    if house.spec[2] == 6.0:
+        recomb_houses.append((House(recomb_land, 11.0, 10.5, 610.0, 0.07, 6.0, None), 
+                             house.location.x, house.location.y))
+    elif house.spec[2] == 3.0:
+        recomb_houses.append((House(recomb_land, 10.0, 7.5, 399.0, 0.04, 3.0, None), 
+                         house.location.x, house.location.y))
+    else:
+        recomb_houses.append((House(recomb_land, 8.0, 8.0, 285.0, 0.04, 2.0, None), 
+                         house.location.x, house.location.y))
+    return recomb_houses
 
-def geneticAlgorithm(variant, population, gui_updates, generations = 100):
+def geneticAlgorithm(variant, population, gui_updates, generations = 2000):
     """
     Create 10 randomizations
     Choose the two with the most value
     Merge together
     """
-    gui_updates_genetic = True
+    max_blue = 0.6*variant
+    max_red = 0.25*variant
+    max_yellow = 0.15*variant
+    test = True
+    gui_updates_genetic = False
     if gui_updates_genetic:
         anim = NewVisualisation(variant, 120, 160)
     population_sa = []
@@ -928,12 +898,12 @@ def geneticAlgorithm(variant, population, gui_updates, generations = 100):
         no_dup = []
         var_list = []
         for elem in population:
-            if elem[1] not in no_dup:
+            if elem[1] not in var_list:
                 no_dup.append(elem)
                 var_list.append(elem[1])
-        print var_list
-        print "Standard Deviation: ", np.std(var_list)
-        print "Population:", len(population)
+        if np.std(var_list) == 0:
+            break
+        print "Population:", len(no_dup)
         population = no_dup
         population = sorted(population,key=lambda x: x[1], reverse=True)
         population = population[:100]
@@ -944,69 +914,134 @@ def geneticAlgorithm(variant, population, gui_updates, generations = 100):
         #mutation
         population_new = []
         population_sa = []
-        for i in range(50):
+        for i in range(10):
             parent = random.choice(population)
-            child = createNewLand(parent[0].land, variant)
-            if i < 15: 
-                simulatedAnnealing(child[0], variant, child[1], child[0].getTotalValue(), gui_updates, 100)        
-                hill_child = hillClimber(child[0], variant, child[1], child[0].getTotalValue(), gui_updates, 50)
-                population_new.append((hill_child[0], hill_child[2], hill_child[0].getHouses()))
-                #print "HillClimber Total Value", hill_child[2]
-            #elif i > 9 and i < 20:
-            #    sa_child = simulatedAnnealing(child[0], variant, child[1], child[0].getTotalValue(), gui_updates, 400)
-            #    population_new.append((sa_child[0], sa_child[2], sa_child[0].getHouses()))
-                #population_sa.append((sa_child[0], sa_child[2], sa_child[0].getHouses()))
-                #print "SA Total Value", sa_child[2]
-            elif i > 24 and i < 40:
-                # Move random house somewhere else
-                child_house = child[0].land[random.choice(child[0].land.keys())]
-                child[0].removeLandAtPosition(child_house)
-                position = child[0].getRandomPosition()
-                good_loc = child_house.checkHousePosition(position)
-                while good_loc == False:
-                    position = child[0].getRandomPosition()
-                    good_loc = child_house.checkHousePosition(position)
-                child_house.setHousePosition(position)
-                total_value = child[0].getTotalValue()
-                population_new.append((child[0], total_value, child[0].getHouses()))
-
-            else:
-                #maison_list = [child[0].land['h1'].vrijstand,child[0].land['h2'].vrijstand,child[0].land['h3'].vrijstand]
-                #child1 = child[0].land['h'+ str(maison_list.index(min(maison_list))+1)]
-                old_value = child[0].getTotalValue()
-                #small_list = []
-                #for nr in range(12,21):
-                #   small_list.append(child[0].land["h" + str(nr)].vrijstand)
-                checkvrijstand = 0
-                small_in_land = True
-                big_in_land = True
-                child2 = child[0].land[random.choice(child[0].land.keys())]
-                child1 = child[0].land[random.choice(child[0].land.keys())]
-                while vrijstandComparison(child1, child2) > checkvrijstand  or big_in_land or small_in_land or child1.spec == child2.spec:
-                    child2 = child[0].land[random.choice(child[0].land.keys())]
-                    child1 = child[0].land[random.choice(child[0].land.keys())]
-#                    while child2.spec[2] == child1.spec[2]:                
-#                        child2 = child[0].land[random.choice(child[0].land.keys())]
-                    
-                    
-                    if child1.spec[2] > child2.spec[2]:  
-                        checkvrijstand = child2.vrijstand + child2.min_dist
+            if i < 5:
+                parent2 = random.choice(population)
+                child = createNewLand(parent[0].land, variant)
+                recomb_houses = []
+                obj1 = random.randint(0,parent[0].depth)
+                obj2 = random.randint(0,parent[0].width)
+                if test:
+                    recomb_land = Land(variant, 120, 160)
+                    #xory = random.random()
+                    if random.random() < 0.5:
+                        func = lambda x : x.location.y > obj1
                     else:
-                        checkvrijstand = child1.vrijstand + child1.min_dist
-                    position_maison = child1.getHousePosition()
-                    position_small = child2.getHousePosition()
-                    big_in_land = not child1.isPositionInLand(position_small)
-                    small_in_land = not child2.isPositionInLand(position_maison)
-                    
-                #child2 = child[0].land['h'+ str(small_list.index(max(small_list))+12)]
-                
-                child[0].removeLandAtPosition(child2)
-                child[0].removeLandAtPosition(child1)         
-                
-                child1.setHousePosition(position_small)
-                child2.setHousePosition(position_maison)
-                total_value = child[0].getTotalValue()
-                population_new.append((child[0], total_value, child[0].getHouses()))
+                        func = lambda x : x.location.x > obj2
+                    for name, house in parent[0].land.iteritems():
+                        if func(house):
+                            for new_house in createHouses(house, recomb_land):
+                                recomb_houses.append(new_house)
+
+                    if random.random() < 0.5:
+                        func = lambda x : x.location.y <= obj1
+                    else:
+                        func = lambda x : x.location.x <= obj2
+                    for name, house in parent2[0].land.iteritems():
+                        if func(house):
+                            for new_house in createHouses(house, recomb_land):
+                                recomb_houses.append(new_house)
+
+                    j = 0
+                    i = len(recomb_houses)-1
+                    m = 1
+                    blue = 0
+                    red = 0
+                    yellow = 0
+                    for k in range(len(recomb_houses)):
+                        if k == variant:
+                            break
+                        if k%2 == 0:
+                            house = recomb_houses[j][0]
+                            if house.spec[2] == 2.0:
+                                blue += 1
+                                if blue > max_blue:
+                                    blue -= 1
+                                    continue
+                            elif house.spec[2] == 3.0:
+                                red += 1
+                                if red > max_red:
+                                    red -= 1
+                                    continue
+                            else:
+                                yellow += 1
+                                if yellow > max_yellow:
+                                    yellow -= 1
+                                    continue
+                            position = Position(recomb_houses[j][1], recomb_houses[j][2])
+                            good_loc = house.checkHousePosition(position)
+                            if good_loc == False:
+                                continue
+                            # placing house on land  
+                            name = "h" + str(m)
+                            house.addHouseName(name)
+                            house.setHousePosition(position)
+                            m += 1
+                            j += 1
+                        else:
+                            house = recomb_houses[i][0]
+                            if house.spec[2] == 2.0:
+                                blue += 1
+                                if blue > max_blue:
+                                    blue -= 1
+                                    continue
+                            elif house.spec[2] == 3.0:
+                                red += 1
+                                if red > max_red:
+                                    red -= 1
+                                    continue
+                            else:
+                                yellow += 1
+                                if yellow > max_yellow:
+                                    yellow -= 1
+                                    continue
+                            position = Position(recomb_houses[i][1], recomb_houses[i][2])
+                            good_loc = house.checkHousePosition(position)
+                            if good_loc == False:
+                                continue
+                            # placing house on land  
+                            name = "h" + str(m)
+                            house.addHouseName(name)
+                            house.setHousePosition(position)
+                            m += 1
+                            i -= 1
+                    while blue < max_blue or red < max_red or yellow < max_yellow:
+                        if yellow < max_yellow:
+                            new_house = House(recomb_land, 11.0, 10.5, 610.0, 0.07, 6.0, None)
+                            yellow += 1
+                        elif red < max_red:
+                            new_house = House(recomb_land, 10.0, 7.5, 399.0, 0.04, 3.0, None)
+                            red += 1
+                        else:
+                            new_house = House(recomb_land, 8.0, 8.0, 285.0, 0.04, 2.0, None)
+                            blue += 1
+                        position = recomb_land.getRandomPosition()
+                        # if position is good it is kept, otherwise enter loop
+                        good_loc = new_house.checkHousePosition(position)
+                        while good_loc == False:
+                        # getting new positions until position is viable       
+                            position = recomb_land.getRandomPosition()
+                            good_loc = new_house.checkHousePosition(position)
+                        # placing house on land  
+                        name = "h" + str(m)
+                        new_house.addHouseName(name)
+                        new_house.setHousePosition(position)
+                        m +=1
+
+                    total_value = recomb_land.getTotalValue()
+                    if generation > 2000:
+                        child = createNewLand(parent[0].land, variant)
+                        hill_child = hillClimber(child[0], variant, child[1], child[0].getTotalValue(), gui_updates, False, 10)
+                        population_new.append((hill_child[0], hill_child[2], hill_child[0].getHouses()))
+                    else:
+                        population_new.append((recomb_land, total_value, recomb_land.getHouses()))
+            else:   
+                child = createNewLand(parent[0].land, variant)
+                hill_child = hillClimber(child[0], variant, child[1], child[0].getTotalValue(), gui_updates, False, 20)
+                population_new.append((hill_child[0], hill_child[2], hill_child[0].getHouses()))
+
+                    #population_new.append((child[0], total_value, child[0].getHouses()))
         population = population + population_new
     
 
@@ -1025,10 +1060,10 @@ def createNewLand(land_dict, variant):
     for key, house in land_dict.iteritems():
         # House name and locations
         #old_houses.append((key, house.position.getX(), house.position.getY()))
-        if int(key[1:]) <= variant*0.15:
+        if house.spec[2] == 6.0:
             old_houses.append((key, House(old_land, 11.0, 10.5, 610.0, 0.06, 6.0, key), 
                                 (house.location.getX(), house.location.getY()), house.neighbor, house.total_val, house.vrijstand))
-        elif variant*0.15+1 <= int(key[1:]) <= variant*0.4:
+        elif house.spec[2] == 3.0:
             old_houses.append((key, House(old_land, 10.0, 7.5, 399.0, 0.04, 3.0, key), 
                                 (house.location.getX(), house.location.getY()), house.neighbor, house.total_val, house.vrijstand))
         else:
@@ -1060,10 +1095,11 @@ def simulation(algorithm_type, variant, gui_updates, randomizations, vrijstand_t
 
     if algorithm_type == "GeneticAlgorithm":
         population = []
-        randomizations = 200
+        randomizations = 50
     
     monitoring = []
     end_list = []
+    mean_list = []
     good_list = (0, None)
     bad_list = ("inf", None)
     start = time.clock()  
@@ -1139,6 +1175,7 @@ def simulation(algorithm_type, variant, gui_updates, randomizations, vrijstand_t
         elif algorithm_type == "HillClimber":
             #land, monitoring_help, total_value = hillClimber(land, variant, houses, initial_value, gui_updates)
             land, monitoring_help, total_value = hillClimber(land, variant, houses, initial_value, gui_updates, vrijstand_type)
+            mean_list.append(total_value)
         
         if algorithm_type == "Nothing":
             total_value = initial_value
@@ -1159,19 +1196,25 @@ def simulation(algorithm_type, variant, gui_updates, randomizations, vrijstand_t
         land, total_value, houses = geneticAlgorithm(variant, population, gui_updates)
         good_list = (total_value, land.land, land)
     end = time.clock()
-    print "The best solution is           :", "{:,}".format(good_list[0]*1000)
-    print "Time elapsed: " +str(round(end - start,2)) +" seconds"
-    Visualisation(good_list)
 
+
+
+
+    #print "The best solution is           :", "{:,}".format(good_list[0]*1000)
+    #print "Time elapsed: " +str(round(end - start,2)) +" seconds"
+    #print "MEAN OF THE HILLCLIMBER", np.mean(mean_list)
     value_check = 0
     for key, house in good_list[1].iteritems():
-        print "House, (neighbor, vrijstand), vrijstandOldMethod:   ", key, house.neighbor, round(house.vrijstand,2), round(good_list[2].getVrijstandOld(house),2)
+        pass
+        #print "House, (neighbor, vrijstand), vrijstandOldMethod:   ", key, house.neighbor, round(house.vrijstand,2), round(good_list[2].getVrijstandOld(house),2)
     for key, house in good_list[1].iteritems():
         value_check += house.getHouseValue()[0]
-    print value_check
-    print "Standard error: ", np.std(end_list)
+    #print value_check
+    #Visualisation(good_list)
+    #print "Standard error: ", np.std(end_list)
     monitoring.append(good_list[3])
     monitoring.append(bad_list[3])
+    #print good_list[2]
     return monitoring
 
 def testvis(info):
@@ -1192,15 +1235,22 @@ def testvis(info):
 
 
 if __name__ == "__main__":
-    advanced = True
+    advanced = False
     vrijstand_type = False
     gui_updates = False
-    #random.seed(212)
-    randomizations = 10
-    variant = 20
-    algorithm1 = "HillClimber"
-    algorithm2 = "SimulatedAnnealing"
-    algorithm3 = "GeneticAlgorithm"
-    algorithm4 = "Nothing"
-    monitoring = simulation(algorithm2, variant, gui_updates, randomizations, vrijstand_type, advanced)
-    performancePlots(monitoring)
+    best_list = [0, None]
+    for i in range(20):
+        k = random.randint(100,100000)
+        random.seed(k)
+        randomizations = 1
+        variant = 20
+        algorithm1 = "HillClimber"
+        algorithm2 = "SimulatedAnnealing"
+        algorithm3 = "GeneticAlgorithm"
+        algorithm4 = "Nothing"
+        monitoring = simulation(algorithm2, variant, gui_updates, randomizations, vrijstand_type, advanced)
+        if monitoring[0][-1] > best_list[0]:
+            best_list = (monitoring[0][-1], k)
+    print best_list
+    #performancePlots(monitoring)
+    #test()
