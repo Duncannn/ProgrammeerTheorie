@@ -619,7 +619,7 @@ class House(object):
                             else:
                                 value_change += house.getHouseValue()[0] - house.getOldHouseValue()
                 #print value_change
-                if temperature < max_temperature - 150:
+                if temperature < max_temperature - 75:
                     temp_func = math.e**(value_change/(100-temperature/(float(max_temperature)/100)))
                 else:
                     temp_func = 0.0
@@ -1238,9 +1238,22 @@ if __name__ == "__main__":
     advanced = False
     vrijstand_type = False
     gui_updates = False
+    output = False
     best_list = [0, None]
-    for i in range(20):
-        k = random.randint(100,100000)
+    """
+    random.seed(88629)
+    randomizations = 1
+    variant = 20
+    algorithm1 = "HillClimber"
+    algorithm2 = "SimulatedAnnealing"
+    algorithm3 = "GeneticAlgorithm"
+    algorithm4 = "Nothing"
+    use_algorithm = algorithm2
+    monitoring = simulation(use_algorithm, variant, gui_updates, randomizations, vrijstand_type, advanced)
+    """
+    for i in range(50):
+        print i+1
+        k = random.randint(10000,100000000)
         random.seed(k)
         randomizations = 1
         variant = 20
@@ -1252,5 +1265,22 @@ if __name__ == "__main__":
         if monitoring[0][-1] > best_list[0]:
             best_list = (monitoring[0][-1], k)
     print best_list
+
+    
+    
+    monitoring = simulation(use_algorithm, variant, gui_updates, randomizations, vrijstand_type, advanced)
+    #performancePlots(monitoring)
+    
+    if output:
+        house_coordinates = []
+        
+        for i in range(1,variant+1):
+            house = monitoring[2].land['h'+str(i)]
+            house_coordinates.append('Position(' + str(house.location.x) + ',' + str(house.location.y)+')')
+        print house_coordinates
+        outfile = open("Output_Var"+str(variant)+"_Rand"+str(randomizations)+"_Algo"+str(use_algorithm)+".txt", "w")
+        outfile.write(",".join(house_coordinates))
+        outfile.close()
+    
     #performancePlots(monitoring)
     #test()
