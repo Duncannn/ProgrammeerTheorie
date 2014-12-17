@@ -555,9 +555,15 @@ class House(object):
         self.land.removeLandAtPosition(self)
         # create a new position
         if temperature == 0.124632563:
-            self.location = self.location.getNewPosition(random.uniform(1,2))
+            if random.random() < 0.5:
+                self.location = self.location.getNewPosition(random.uniform(1,2))
+            else:
+                self.location = self.land.getRandomPosition()
         else:
-            self.location = self.location.getNewPosition(5.5-temperature/(max_temperature/5))
+            if random.random() < 0.5:
+                self.location = self.location.getNewPosition(5.5-temperature/(max_temperature/5))
+            else:
+                self.location = self.land.getRandomPosition()
         new_pos = self.location
         # checks is the position is in land
         if self.isPositionInLand(new_pos):
@@ -619,10 +625,10 @@ class House(object):
                             else:
                                 value_change += house.getHouseValue()[0] - house.getOldHouseValue()
                 #print value_change
-                if temperature < max_temperature - 75:
+                try:
                     temp_func = math.e**(value_change/(100-temperature/(float(max_temperature)/100)))
-                else:
-                    temp_func = 0.0
+                except:
+                    temp_func = 1.0
                 if value_change > 0 or (random.random() < temp_func and temperature != 0.124632563):
                     return value_change
                     #return vrijstand_change
@@ -822,7 +828,8 @@ def hillClimber(land, variant, houses, current_value, gui_updates, vrijstand_typ
         current_value += house.updatePosition(vrijstand_type)
         monitoring_help.append(current_value)
             #land.printit()
-        if i%300 == 0 and i > 1:
+        if i%500 == 0 and i > 1:
+            #print i
             k += 1
             stop_list.append(current_value)
             if 100*(stop_list[k]/stop_list[k-1]-1) < 0.1:
@@ -878,7 +885,7 @@ def createHouses(house, recomb_land):
                          house.location.x, house.location.y))
     return recomb_houses
 
-def geneticAlgorithm(variant, population, gui_updates, generations = 2000, survival = True):
+def geneticAlgorithm(variant, population, gui_updates, generations = 2000, survival = False):
     """
     Create 10 randomizations
     Choose the two with the most value
@@ -1181,6 +1188,7 @@ def simulation(algorithm_type, variant, gui_updates, randomizations, vrijstand_t
         if algorithm_type == "SimulatedAnnealing":
             #land, monitoring_help, total_value = simulatedAnnealing(land, variant, houses, initial_value, gui_updates)
             land, monitoring_help, total_value = simulatedAnnealing(land, variant, houses, initial_value, gui_updates, vrijstand_type)
+            mean_list.append(total_value)
 
         # Hill Climber
         elif algorithm_type == "HillClimber":
@@ -1216,13 +1224,12 @@ def simulation(algorithm_type, variant, gui_updates, randomizations, vrijstand_t
     print "MEAN OF THE HILLCLIMBER", np.mean(mean_list)
     value_check = 0
     for key, house in good_list[1].iteritems():
-        pass
         print "House, (neighbor, vrijstand), vrijstandOldMethod:   ", key, house.neighbor, round(house.vrijstand,2), round(good_list[2].getVrijstandOld(house),2)
     for key, house in good_list[1].iteritems():
         value_check += house.getHouseValue()[0]
     print value_check
     Visualisation(good_list)
-    #print "Standard error: ", np.std(end_list)
+    print "Standard error: ", np.std(end_list)
     monitoring.append(good_list[3])
     monitoring.append(bad_list[3])
     #print good_list[2]
@@ -1244,25 +1251,33 @@ def testvis(info):
     w.pack()
     master.mainloop()
 
+def test():
+    x = range(30000)
+    f = []
+    for i in range(len(x)):
+        f.append(math.e**(-random.randint(0,100)/(100-i/(float(30000)/100))))
+    pylab.figure()
+    pylab.plot(x,f)
+    pylab.show()
 
 if __name__ == "__main__":
     advanced = False
-    vrijstand_type = False
-    gui_updates = False
-    output = True
+    vrijstand_type = True
+    gui_updates = True
+    output = False
     best_list = [0, None]
     
-    random.seed(88629)
-    randomizations = 1
+    #random.seed(1234321)
+    randomizations = 10
     variant = 20
     algorithm1 = "HillClimber"
     algorithm2 = "SimulatedAnnealing"
     algorithm3 = "GeneticAlgorithm"
     algorithm4 = "Nothing"
-    use_algorithm = algorithm3
+    use_algorithm = algorithm1
     monitoring = simulation(use_algorithm, variant, gui_updates, randomizations, vrijstand_type, advanced)
     """
-    for i in range(50):
+    for i in range(200):
         print i+1
         k = random.randint(10000,100000000)
         random.seed(k)
@@ -1275,12 +1290,13 @@ if __name__ == "__main__":
         monitoring = simulation(algorithm2, variant, gui_updates, randomizations, vrijstand_type, advanced)
         if monitoring[0][-1] > best_list[0]:
             best_list = (monitoring[0][-1], k)
+        if best_list[0] > 15600:
+            break
     print best_list
     """
     
-    
     #monitoring = simulation(use_algorithm, variant, gui_updates, randomizations, vrijstand_type, advanced)
-    #performancePlots(monitoring)
+    performancePlots(monitoring)
     
     if output:
         house_coordinates = []
